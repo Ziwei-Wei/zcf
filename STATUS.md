@@ -57,14 +57,24 @@ Current fix:
 - use `$GITHUB_WORKSPACE` inside manylinux containers;
 - mark fake POSIX entry points executable in launcher tests.
 
+### Green PR matrix
+
+[Run 37406161535](https://github.com/Ziwei-Wei/zcf/actions/runs/37406161535)
+
+- Windows x64: passed.
+- Windows ARM64: passed.
+- macOS Intel: passed.
+- macOS ARM64: passed.
+- manylinux 2.28 x64: passed.
+- manylinux 2.28 ARM64: passed.
+- Every wheel completed native formatting, Python launcher, real pipx
+  installation, `zcf activate`, WFormat, uninstall, and artifact-upload tests.
+
 ## Remaining release work
 
-1. Complete a green six-platform wheel matrix:
-   - Windows x64 and ARM64;
-   - macOS Intel and ARM64;
-   - manylinux 2.28 x64 and ARM64.
+1. Merge [PR #1](https://github.com/Ziwei-Wei/zcf/pull/1).
 2. Register the repository's `pypi` environment as a PyPI trusted publisher.
-3. Push tag `v0.1.0` after the matrix passes.
+3. Push tag `v0.1.0`.
 4. Confirm public installation:
 
    ```text
