@@ -5,7 +5,7 @@ build-backend = "scikit_build_core.build"
 [project]
 name = "zcf"
 version = "0.1.0"
-description = "z-clang-format with the WFormat preset"
+description = "z-clang-format with a reviewed custom C++ policy"
 readme = "README.md"
 requires-python = ">=3.9"
 license = "Apache-2.0 WITH LLVM-exception"

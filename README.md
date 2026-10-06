@@ -1,7 +1,7 @@
 # zcf
 
 **zcf** means **z-clang-format**. It is a clang-format-compatible native
-formatter built from LLVM 20.1.8 with the custom `WFormat` C++ preset.
+formatter built from LLVM 20.1.8 with a reviewed custom C++ policy.
 
 The build produces one formatter under two names:
 
@@ -10,9 +10,9 @@ zcf                 user-facing command
 clang-format        byte-identical alias for IDE discovery
 ```
 
-`WFormat` is enabled only for C++. Every upstream style and non-C++ language
-retains upstream behavior unless a configuration explicitly enables an
-extension.
+The custom policy is enabled only for C++. Every upstream style and non-C++
+language retains upstream behavior unless a configuration explicitly enables
+an extension.
 
 ## Install with pipx
 
@@ -64,22 +64,14 @@ registered as a trusted publisher before the first release.
 Command-line usage is the same as clang-format:
 
 ```text
-zcf -style=WFormat file.cpp
 zcf -style=LLVM file.cpp
-zcf -style=WFormat -i file.cpp
-clang-format -style=WFormat file.cpp
+zcf -style=file -i file.cpp
+clang-format -style=file file.cpp
 ```
 
-Minimal `.clang-format`:
-
-```yaml
-BasedOnStyle: WFormat
-```
-
-The preset uses `ColumnLimit: 140`, leading binary operators, no consecutive
-assignment alignment, right-aligned scalar matrices, progressive call and
-arithmetic expansion, and the 26 extension options listed in
-[the feature catalog](tests/wformat-style-gaps/FEATURES.md).
+The reviewed C++ policy uses `ColumnLimit: 140`, leading binary operators, no
+consecutive assignment alignment, right-aligned scalar matrices, progressive
+call and arithmetic expansion, and 26 independently configurable extensions.
 
 ## Build from source
 
@@ -153,7 +145,7 @@ py tests\validate_pipx_package.py `
   --wheel .\dist\zcf-0.1.0-py3-none-win_amd64.whl
 ```
 
-The test verifies both entry points, version reporting, WFormat forwarding,
+The test verifies both entry points, version reporting, custom-policy formatting,
 conflict discovery, dry-run activation, and uninstall cleanup.
 
 ## Architecture
@@ -164,7 +156,7 @@ Upstream LibFormat remains pristine:
 third_party/llvm-project/       pinned upstream submodule
 integration/patches/            minimal policy-free bridge
 integration/clang-format/       private LibFormat adapter
-extensions/clang-format/        WFormat policy and options
+extensions/clang-format/        custom C++ policy and options
 build/llvm-overlay/             ignored generated patched worktree
 clang-format/ClangFormat.cpp    zcf command-line tool
 ```
@@ -185,7 +177,7 @@ cmake --build build/release --target zcf
 cmake --build build/release --target smoke-zcf
 ```
 
-WFormat contract tests:
+Custom-policy contract tests:
 
 ```text
 cmake --build build/release --target validate-p0-format
@@ -208,13 +200,6 @@ Python launcher and wheel tests:
 py -m unittest tests/test_zcf_launcher.py -v
 python tests/validate_pipx_package.py --wheel <wheel>
 ```
-
-Detailed WFormat contracts:
-
-- [Feature catalog](tests/wformat-style-gaps/FEATURES.md)
-- [Machine-readable manifest](tests/wformat-style-gaps/manifest.json)
-- [Focused cases](tests/wformat-style-gaps/cases)
-- [Canonical C++ fixture](tests/cpp-style-examples/wformat_supported_style_details.cpp)
 
 ## Static-link behavior
 

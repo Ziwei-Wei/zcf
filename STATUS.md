@@ -5,7 +5,7 @@ Last updated: 2026-10-05
 ## Complete
 
 - `zcf` is a single clang-format-compatible native executable.
-- `WFormat` provides 26 independently configurable C++ extension options.
+- The reviewed C++ policy provides 26 independently configurable extensions.
 - Upstream LLVM 20.1.8 remains pinned and pristine behind a generated overlay.
 - `pipx install zcf` packages the native executable and exposes:
   - `zcf`
@@ -14,7 +14,7 @@ Last updated: 2026-10-05
   precedence without deleting another formatter.
 - Windows x64 and ARM64 wheel jobs pass end to end.
 - Local Windows validation passes:
-  - P0, P1, and P2 WFormat suites;
+  - P0, P1, and P2 policy suites;
   - isolated pipx wheel installation and uninstall;
   - activation/conflict detection;
   - 210/210 upstream parity tests.
@@ -68,7 +68,8 @@ Current fix:
 - manylinux 2.28 x64: passed.
 - manylinux 2.28 ARM64: passed.
 - Every wheel completed native formatting, Python launcher, real pipx
-  installation, `zcf activate`, WFormat, uninstall, and artifact-upload tests.
+  installation, `zcf activate`, custom-policy formatting, uninstall, and
+  artifact-upload tests.
 
 ## Remaining release work
 
