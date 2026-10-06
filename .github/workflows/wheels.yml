@@ -167,7 +167,7 @@ jobs:
         run: |
           export PATH="$(dirname '${{ matrix.python }}'):$PATH"
           ${{ matrix.python }} -m build --wheel --outdir build/unrepaired \
-            -C "cmake.args=-DZCF_EXECUTABLE=${{ github.workspace }}/build/release/bin/${{ matrix.executable }}"
+            -C "cmake.args=-DZCF_EXECUTABLE=$GITHUB_WORKSPACE/build/release/bin/${{ matrix.executable }}"
           auditwheel repair build/unrepaired/*.whl --wheel-dir build/dist
 
       - name: Test Python launcher

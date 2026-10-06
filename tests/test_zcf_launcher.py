@@ -33,6 +33,8 @@ class LauncherTests(unittest.TestCase):
                 root / pipx_name,
             ):
                 path.write_bytes(b"test")
+                if not launcher._is_windows():
+                    path.chmod(0o755)
 
             def which(name: str):
                 return {
@@ -78,6 +80,8 @@ class LauncherTests(unittest.TestCase):
             pipx_name = launcher._application_name("pipx")
             for path in (root / zcf_name, root / alias_name, root / pipx_name):
                 path.write_bytes(b"test")
+                if not launcher._is_windows():
+                    path.chmod(0o755)
 
             original_path = str(root)
             output = StringIO()
