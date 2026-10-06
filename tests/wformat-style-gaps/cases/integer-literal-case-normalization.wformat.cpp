@@ -1,0 +1,1 @@
+unsigned values[] = {0xDEADBEEFUL, 0b1010ULL, 0777U, 123LL};

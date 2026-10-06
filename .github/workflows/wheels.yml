@@ -1,0 +1,220 @@
+name: Cross-platform wheels
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-wheel:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x64
+            runner: windows-2025
+            executable: zcf.exe
+            cmake_args: -DCUSTOM_STATIC_MSVC_RUNTIME=ON
+            deployment_target: ""
+            msvc_arch: x64
+          - name: Windows ARM64
+            runner: windows-11-vs2026-arm
+            executable: zcf.exe
+            cmake_args: -DCUSTOM_STATIC_MSVC_RUNTIME=ON
+            deployment_target: ""
+            msvc_arch: amd64_arm64
+          - name: macOS Intel
+            runner: macos-26-intel
+            executable: zcf
+            cmake_args: -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0
+            deployment_target: "13.0"
+            msvc_arch: ""
+          - name: macOS ARM64
+            runner: macos-26
+            executable: zcf
+            cmake_args: -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0
+            deployment_target: "13.0"
+            msvc_arch: ""
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Configure MSVC
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.msvc_arch }}
+
+      - name: Install build tools
+        shell: bash
+        run: python -m pip install --disable-pip-version-check cmake ninja build "scikit-build-core>=1.1,<2" pipx
+
+      - name: Configure zcf
+        shell: bash
+        run: >
+          cmake -S . -B build/release -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DLLVM_TARGETS_TO_BUILD=host
+          -DCUSTOM_BUILD_JOBS=3
+          ${{ matrix.cmake_args }}
+
+      - name: Build zcf
+        shell: bash
+        run: cmake --build build/release --target zcf --parallel 3
+
+      - name: Test native formatter
+        shell: bash
+        run: |
+          build/release/bin/${{ matrix.executable }} --version
+          printf 'int main(){return 0;}\n' |
+            build/release/bin/${{ matrix.executable }} \
+              -style=WFormat --assume-filename=x.cpp
+
+      - name: Build wheel
+        shell: bash
+        env:
+          MACOSX_DEPLOYMENT_TARGET: ${{ matrix.deployment_target }}
+        run: >
+          python -m build --wheel --outdir build/dist
+          -C "cmake.args=-DZCF_EXECUTABLE=${{ github.workspace }}/build/release/bin/${{ matrix.executable }}"
+
+      - name: Test Python launcher
+        shell: bash
+        run: python -m unittest tests/test_zcf_launcher.py -v
+
+      - name: Test pipx installation and activation
+        shell: bash
+        run: python tests/validate_pipx_package.py --activate
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zcf-wheel-${{ runner.os }}-${{ runner.arch }}
+          path: build/dist/*.whl
+          if-no-files-found: error
+
+  manylinux-wheel:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    container: ${{ matrix.container }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux x64
+            runner: ubuntu-24.04
+            container: quay.io/pypa/manylinux_2_28_x86_64
+            python: /opt/python/cp311-cp311/bin/python
+            executable: zcf
+          - name: Linux ARM64
+            runner: ubuntu-24.04-arm
+            container: quay.io/pypa/manylinux_2_28_aarch64
+            python: /opt/python/cp311-cp311/bin/python
+            executable: zcf
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: Install system and Python build tools
+        shell: bash
+        run: |
+          dnf install -y git
+          ${{ matrix.python }} -m pip install \
+            --disable-pip-version-check \
+            cmake ninja build "scikit-build-core>=1.1,<2" pipx auditwheel
+
+      - name: Configure zcf
+        shell: bash
+        run: |
+          export PATH="$(dirname '${{ matrix.python }}'):$PATH"
+          cmake -S . -B build/release -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DLLVM_TARGETS_TO_BUILD=host \
+            -DCUSTOM_BUILD_JOBS=3
+
+      - name: Build zcf
+        shell: bash
+        run: |
+          export PATH="$(dirname '${{ matrix.python }}'):$PATH"
+          cmake --build build/release --target zcf --parallel 3
+
+      - name: Test native formatter
+        shell: bash
+        run: |
+          build/release/bin/${{ matrix.executable }} --version
+          printf 'int main(){return 0;}\n' |
+            build/release/bin/${{ matrix.executable }} \
+              -style=WFormat --assume-filename=x.cpp
+
+      - name: Build and repair wheel
+        shell: bash
+        run: |
+          export PATH="$(dirname '${{ matrix.python }}'):$PATH"
+          ${{ matrix.python }} -m build --wheel --outdir build/unrepaired \
+            -C "cmake.args=-DZCF_EXECUTABLE=${{ github.workspace }}/build/release/bin/${{ matrix.executable }}"
+          auditwheel repair build/unrepaired/*.whl --wheel-dir build/dist
+
+      - name: Test Python launcher
+        shell: bash
+        run: ${{ matrix.python }} -m unittest tests/test_zcf_launcher.py -v
+
+      - name: Test pipx installation and activation
+        shell: bash
+        run: ${{ matrix.python }} tests/validate_pipx_package.py --activate
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zcf-wheel-${{ runner.os }}-${{ runner.arch }}
+          path: build/dist/*.whl
+          if-no-files-found: error
+
+  publish:
+    name: Publish to PyPI
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs:
+      - native-wheel
+      - manylinux-wheel
+    runs-on: ubuntu-24.04
+    environment: pypi
+    permissions:
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Verify release tag
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: >
+          python -c "import os,pathlib,tomllib;
+          version=tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'];
+          assert os.environ['RELEASE_TAG']==f'v{version}',
+          f\"tag {os.environ['RELEASE_TAG']} does not match v{version}\""
+
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: zcf-wheel-*
+          path: dist
+          merge-multiple: true
+
+      - uses: pypa/gh-action-pypi-publish@release/v1

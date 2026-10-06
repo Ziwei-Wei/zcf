@@ -1,0 +1,93 @@
+diff --git a/clang/lib/Format/ContinuationIndenter.cpp b/clang/lib/Format/ContinuationIndenter.cpp
+index d953348b0..7d0a541a6 100644
+--- a/clang/lib/Format/ContinuationIndenter.cpp
++++ b/clang/lib/Format/ContinuationIndenter.cpp
+@@ -20,6 +20,7 @@
+ #include "clang/Basic/SourceManager.h"
+ #include "clang/Basic/TokenKinds.h"
+ #include "clang/Format/Format.h"
++#include "integration/clang-format/ExtensionHooks.h"
+ #include "llvm/ADT/StringSet.h"
+ #include "llvm/Support/Debug.h"
+ #include <optional>
+@@ -1288,6 +1289,10 @@ unsigned ContinuationIndenter::getNewLineColumn(const LineState &State) {
+   FormatToken &Current = *State.NextToken;
+   const auto &CurrentState = State.Stack.back();
+ 
++  if (auto Column = extensions::getExtensionNewLineColumn(State, Style)) {
++    return *Column;
++  }
++
+   if (CurrentState.IsCSharpGenericTypeConstraint &&
+       Current.isNot(TT_CSharpGenericTypeConstraint)) {
+     return CurrentState.ColonPos + 2;
+diff --git a/clang/lib/Format/Format.cpp b/clang/lib/Format/Format.cpp
+index aba7db6dd..c85a41ef7 100644
+--- a/clang/lib/Format/Format.cpp
++++ b/clang/lib/Format/Format.cpp
+@@ -22,6 +22,7 @@
+ #include "UnwrappedLineFormatter.h"
+ #include "UsingDeclarationsSorter.h"
+ #include "clang/Tooling/Inclusions/HeaderIncludes.h"
++#include "integration/clang-format/ExtensionHooks.h"
+ #include "llvm/ADT/Sequence.h"
+ 
+ #define DEBUG_TYPE "format-formatter"
+@@ -1189,6 +1190,8 @@ template <> struct MappingTraits<FormatStyle> {
+                    Style.WhitespaceSensitiveMacros);
+     IO.mapOptional("WrapNamespaceBodyWithEmptyLines",
+                    Style.WrapNamespaceBodyWithEmptyLines);
++    clang::format::extensions::mapExtensionConfiguration(
++        IO, Style.Language, BasedOnStyle);
+ 
+     // If AlwaysBreakAfterDefinitionReturnType was specified but
+     // BreakAfterReturnType was not, initialize the latter from the former for
+@@ -2032,7 +2035,7 @@ bool getPredefinedStyle(StringRef Name, FormatStyle::LanguageKind Language,
+     *Style = getNoStyle();
+   else if (Name.equals_insensitive("inheritparentconfig"))
+     Style->InheritsParentConfig = true;
+-  else
++  else if (!extensions::getExtensionPredefinedStyle(Name, Language, Style))
+     return false;
+ 
+   Style->Language = Language;
+@@ -3840,6 +3843,9 @@ reformat(const FormatStyle &Style, StringRef Code,
+   Passes.emplace_back([&](const Environment &Env) {
+     return Formatter(Env, Expanded, Status).process();
+   });
++  Passes.emplace_back([&](const Environment &Env) {
++    return extensions::runExtensionPostFormatPass(Env, Expanded);
++  });
+ 
+   if (Style.isJavaScript() &&
+       Style.InsertTrailingCommas == FormatStyle::TCS_Wrapped) {
+diff --git a/clang/lib/Format/TokenAnnotator.cpp b/clang/lib/Format/TokenAnnotator.cpp
+index 0c13356ca..cd1ff70d4 100644
+--- a/clang/lib/Format/TokenAnnotator.cpp
++++ b/clang/lib/Format/TokenAnnotator.cpp
+@@ -16,6 +16,7 @@
+ #include "FormatToken.h"
+ #include "clang/Basic/SourceManager.h"
+ #include "clang/Basic/TokenKinds.h"
++#include "integration/clang-format/ExtensionHooks.h"
+ #include "llvm/ADT/SmallPtrSet.h"
+ #include "llvm/Support/Debug.h"
+ 
+@@ -4149,6 +4150,7 @@ void TokenAnnotator::calculateFormattingInformation(AnnotatedLine &Line) const {
+     }
+   }
+ 
++  extensions::customizeAnnotatedLine(Line, Style);
+   calculateUnbreakableTailLengths(Line);
+   unsigned IndentLevel = Line.Level;
+   for (auto *Current = First; Current; Current = Current->Next) {
+@@ -4937,6 +4939,9 @@ bool TokenAnnotator::spaceRequiredBefore(const AnnotatedLine &Line,
+   if (Left.Finalized)
+     return Right.hasWhitespaceBefore();
+ 
++  if (auto Required = extensions::getSpaceRequiredBefore(Line, Right))
++    return *Required;
++
+   const bool IsVerilog = Style.isVerilog();
+   assert(!IsVerilog || !IsCpp);
+ 

@@ -1,0 +1,35 @@
+[build-system]
+requires = ["scikit-build-core>=1.1,<2"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "zcf"
+version = "0.1.0"
+description = "z-clang-format with the WFormat preset"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "Apache-2.0 WITH LLVM-exception"
+license-files = ["LICENSE.txt"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Operating System :: MacOS",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: C++",
+  "Programming Language :: Python :: 3",
+  "Topic :: Software Development :: Quality Assurance",
+]
+
+[project.scripts]
+zcf = "zcf.launcher:zcf_main"
+"clang-format" = "zcf.launcher:clang_format_main"
+
+[tool.scikit-build]
+minimum-version = "build-system.requires"
+cmake.source-dir = "python"
+wheel.packages = ["python/zcf"]
+wheel.install-dir = "zcf"
+wheel.py-api = "py3"
+install.components = ["python"]

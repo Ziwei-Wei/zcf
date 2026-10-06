@@ -1,0 +1,30 @@
+{
+  "version": 2,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 20,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "release",
+      "displayName": "Release zcf",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "LLVM_PROJECT_SOURCE_DIR": "${sourceDir}/third_party/llvm-project",
+        "LLVM_TARGETS_TO_BUILD": "host"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "zcf",
+      "configurePreset": "release",
+      "targets": [
+        "zcf"
+      ]
+    }
+  ]
+}

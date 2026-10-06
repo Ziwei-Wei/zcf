@@ -1,0 +1,3 @@
+void
+legacy()
+throw(int);

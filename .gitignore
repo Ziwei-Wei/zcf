@@ -1,0 +1,14 @@
+build/
+build-*/
+out/
+.llvm-static/
+.vs/
+.vscode/
+CMakeUserPresets.json
+compile_commands.json
+*.user
+*.suo
+*.swp
+*.tmp
+__pycache__/
+*.py[cod]
