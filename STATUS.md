@@ -1,0 +1,85 @@
+# zcf implementation status
+
+Last updated: 2026-10-05
+
+## Complete
+
+- `zcf` is a single clang-format-compatible native executable.
+- The reviewed C++ policy provides 26 independently configurable extensions.
+- Upstream LLVM 20.1.8 remains pinned and pristine behind a generated overlay.
+- `pipx install zcf` packages the native executable and exposes:
+  - `zcf`
+  - `clang-format`
+- `zcf activate`, `zcf activate --dry-run`, and `zcf status` safely manage PATH
+  precedence without deleting another formatter.
+- Windows x64 and ARM64 wheel jobs pass end to end.
+- Local Windows validation passes:
+  - P0, P1, and P2 policy suites;
+  - isolated pipx wheel installation and uninstall;
+  - activation/conflict detection;
+  - 210/210 upstream parity tests.
+- Cross-platform overlay generation now uses Python rather than PowerShell.
+
+## GitHub Actions progress
+
+Workflow:
+[Cross-platform wheels](.github/workflows/wheels.yml)
+
+### Initial run
+
+[Run 37394782489](https://github.com/Ziwei-Wei/zcf/actions/runs/37394782489)
+
+- Windows x64: passed.
+- Windows ARM64: passed.
+- Linux x64/ARM64: reached final link; failed because local zcf objects used
+  RTTI while LLVM was built without RTTI.
+- macOS Intel/ARM64: local project configuration required the C language for
+  LLVM's LibEdit probe.
+
+Fix:
+
+- enabled C and C++ in the local zcf project;
+- matched LLVM's no-RTTI/no-exceptions defaults on non-MSVC toolchains.
+
+### Portability rerun
+
+[Run 37401260031](https://github.com/Ziwei-Wei/zcf/actions/runs/37401260031)
+
+- Windows x64: passed.
+- Windows ARM64: passed.
+- Linux x64/ARM64: native formatter build and smoke test passed; wheel staging
+  used the host workspace path instead of the container workspace path.
+- macOS Intel/ARM64: native formatter and wheel build passed; POSIX unit-test
+  fixtures were not marked executable.
+
+Current fix:
+
+- use `$GITHUB_WORKSPACE` inside manylinux containers;
+- mark fake POSIX entry points executable in launcher tests.
+
+### Green PR matrix
+
+[Run 37406161535](https://github.com/Ziwei-Wei/zcf/actions/runs/37406161535)
+
+- Windows x64: passed.
+- Windows ARM64: passed.
+- macOS Intel: passed.
+- macOS ARM64: passed.
+- manylinux 2.28 x64: passed.
+- manylinux 2.28 ARM64: passed.
+- Every wheel completed native formatting, Python launcher, real pipx
+  installation, `zcf activate`, custom-policy formatting, uninstall, and
+  artifact-upload tests.
+
+## Remaining release work
+
+1. Merge [PR #1](https://github.com/Ziwei-Wei/zcf/pull/1).
+2. Register the repository's `pypi` environment as a PyPI trusted publisher.
+3. Push tag `v0.1.0`.
+4. Confirm public installation:
+
+   ```text
+   pipx install zcf
+   zcf activate
+   zcf status
+   ```
