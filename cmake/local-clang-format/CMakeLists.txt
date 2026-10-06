@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(Zcf LANGUAGES CXX)
+project(Zcf LANGUAGES C CXX)
 
 if(NOT CUSTOM_CLANG_FORMAT_SOURCE_DIR)
   message(FATAL_ERROR "CUSTOM_CLANG_FORMAT_SOURCE_DIR is required")
@@ -133,5 +133,9 @@ if(MSVC)
   foreach(_target zcfClangFormat zcf-local)
     target_compile_definitions(${_target} PRIVATE _HAS_EXCEPTIONS=0)
     target_compile_options(${_target} PRIVATE /bigobj /EHs-c- /GR-)
+  endforeach()
+else()
+  foreach(_target zcfClangFormat zcf-local)
+    target_compile_options(${_target} PRIVATE -fno-exceptions -fno-rtti)
   endforeach()
 endif()
