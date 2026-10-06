@@ -3,6 +3,13 @@
 **zcf** means **z-clang-format**. It is a clang-format-compatible native
 formatter built from LLVM 20.1.8 with a reviewed custom C++ policy.
 
+zcf extends the original clang-format rather than replacing its configuration
+model. Existing `.clang-format` and `_clang-format` files, predefined styles,
+command-line options, editor integrations, and supported languages remain
+compatible. Projects can adopt zcf without rewriting their clang-format
+configuration; zcf-specific options are additive and upstream behavior is
+preserved when those options are not enabled.
+
 The build produces one formatter under two names:
 
 ```text
