@@ -124,6 +124,53 @@ def main() -> int:
                 f"zcf status did not identify the pipx alias: {status}"
             )
 
+        repository = work_dir / "repository"
+        (repository / ".git").mkdir(parents=True)
+        installation = run(
+            [str(zcf), "install-skill", str(repository)],
+            environment=environment,
+        ).stdout
+        skill = repository / ".github" / "skills" / "zcf" / "SKILL.md"
+        if not skill.is_file() or "name: zcf" not in skill.read_text(
+            encoding="utf-8"
+        ):
+            raise RuntimeError(
+                f"zcf did not install its agent skill: {installation}"
+            )
+        idempotent = run(
+            [str(zcf), "install-skill", str(repository)],
+            environment=environment,
+        ).stdout
+        if "already current" not in idempotent:
+            raise RuntimeError(
+                f"zcf skill reinstall was not idempotent: {idempotent}"
+            )
+        skill.write_text("user-owned\n", encoding="utf-8")
+        conflict = subprocess.run(
+            [str(zcf), "install-skill", str(repository)],
+            check=False,
+            env=environment,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+        if conflict.returncode == 0 or "Refusing to overwrite" not in conflict.stdout:
+            raise RuntimeError(
+                "zcf did not refuse a conflicting skill installation:\n"
+                f"{conflict.stdout}"
+            )
+        run(
+            [
+                str(zcf),
+                "install-skill",
+                "--force",
+                str(repository),
+            ],
+            environment=environment,
+        )
+        if "name: zcf" not in skill.read_text(encoding="utf-8"):
+            raise RuntimeError("zcf --force did not restore the packaged skill.")
+
         existing_dir = work_dir / "existing"
         existing_dir.mkdir()
         existing_alias = existing_dir / clang_format.name

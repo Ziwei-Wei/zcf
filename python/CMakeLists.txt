@@ -23,6 +23,16 @@ if(NOT EXISTS "${ZCF_EXECUTABLE}")
     "before creating a wheel. Missing: ${ZCF_EXECUTABLE}")
 endif()
 
+get_filename_component(_repo_root "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
+set(_zcf_skill "${_repo_root}/.github/skills/zcf/SKILL.md")
+if(NOT EXISTS "${_zcf_skill}")
+  message(FATAL_ERROR "The packaged zcf agent skill was not found: ${_zcf_skill}")
+endif()
+
 install(PROGRAMS "${ZCF_EXECUTABLE}"
   DESTINATION bin
+  COMPONENT python)
+
+install(FILES "${_zcf_skill}"
+  DESTINATION skills/zcf
   COMPONENT python)

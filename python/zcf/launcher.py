@@ -5,6 +5,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 from importlib.resources import files
 from pathlib import Path
 
@@ -27,6 +28,70 @@ def _native_binary() -> Path:
     if not path.is_file():
         raise RuntimeError(f"Bundled zcf binary was not found: {path}")
     return path
+
+
+def _skill_content() -> str:
+    resource = files("zcf").joinpath("skills", "zcf", "SKILL.md")
+    if not resource.is_file():
+        raise RuntimeError(f"Packaged zcf skill was not found: {resource}")
+    return resource.read_text(encoding="utf-8")
+
+
+def _install_skill(repository: Path, *, force: bool) -> int:
+    root = repository.expanduser().resolve()
+    if not (root / ".git").exists():
+        raise RuntimeError(f"Not a Git repository: {root}")
+
+    destination = root / ".github" / "skills" / "zcf" / "SKILL.md"
+    content = _skill_content()
+    if destination.is_file():
+        existing = destination.read_text(encoding="utf-8")
+        if existing == content:
+            print(f"zcf agent skill is already current: {destination}")
+            return 0
+        if not force:
+            raise RuntimeError(
+                f"Refusing to overwrite an existing skill: {destination}. "
+                "Use 'zcf install-skill --force' to replace it."
+            )
+
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        mode="w",
+        encoding="utf-8",
+        newline="\n",
+        dir=destination.parent,
+        prefix=".SKILL.",
+        suffix=".tmp",
+        delete=False,
+    ) as stream:
+        stream.write(content)
+        temporary = Path(stream.name)
+    try:
+        os.replace(temporary, destination)
+    finally:
+        temporary.unlink(missing_ok=True)
+    print(f"Installed zcf agent skill: {destination}")
+    return 0
+
+
+def _parse_install_skill_arguments(arguments: list[str]) -> tuple[Path, bool]:
+    force = False
+    repository: Path | None = None
+    for argument in arguments:
+        if argument == "--force":
+            force = True
+        elif argument.startswith("-"):
+            raise RuntimeError(
+                "Usage: zcf install-skill [--force] [repository]"
+            )
+        elif repository is None:
+            repository = Path(argument)
+        else:
+            raise RuntimeError(
+                "Usage: zcf install-skill [--force] [repository]"
+            )
+    return repository or Path.cwd(), force
 
 
 def _run_native(*, clang_format_alias: bool) -> int:
@@ -211,6 +276,9 @@ def zcf_main() -> int:
             return _activate(dry_run=dry_run)
         if len(sys.argv) == 2 and sys.argv[1] == "status":
             return _status()
+        if len(sys.argv) >= 2 and sys.argv[1] == "install-skill":
+            repository, force = _parse_install_skill_arguments(sys.argv[2:])
+            return _install_skill(repository, force=force)
         return _run_native(clang_format_alias=False)
     except RuntimeError as error:
         print(f"zcf: error: {error}", file=sys.stderr)

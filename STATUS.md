@@ -12,6 +12,8 @@ Last updated: 2026-10-05
   - `clang-format`
 - `zcf activate`, `zcf activate --dry-run`, and `zcf status` safely manage PATH
   precedence without deleting another formatter.
+- `zcf install-skill` installs the packaged project skill under
+  `.github/skills/zcf/SKILL.md` with idempotent and conflict-safe behavior.
 - Windows x64 and ARM64 wheel jobs pass end to end.
 - Local Windows validation passes:
   - P0, P1, and P2 policy suites;

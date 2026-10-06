@@ -52,6 +52,22 @@ zcf status
 
 Restart running terminals and IDEs after activation.
 
+Install the zcf agent skill into a repository so compatible coding agents can
+discover and use the formatter automatically:
+
+```text
+cd path/to/repository
+zcf install-skill
+git add .github/skills/zcf/SKILL.md
+```
+
+The command is idempotent and refuses to overwrite an existing skill unless
+`--force` is specified. A different repository can be provided explicitly:
+
+```text
+zcf install-skill path/to/repository
+```
+
 Each wheel contains one platform-native zcf binary. Separate wheels are needed
 for each supported operating system and architecture, but they are independent
 of the Python runtime version (`py3-none-<platform>`).
