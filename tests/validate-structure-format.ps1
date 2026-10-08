@@ -15,7 +15,7 @@ Set-StrictMode -Version Latest
 
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 if (-not $StyleFile) {
-    $StyleFile = Join-Path $repoRoot 'tests\cpp-style-examples\wformat-p0.clang-format'
+    $StyleFile = Join-Path $repoRoot 'tests\cpp-style-examples\wformat-structures.clang-format'
 }
 if (-not $UpstreamStyleFile) {
     $UpstreamStyleFile = Join-Path $repoRoot 'tests\cpp-style-examples\wformat-target.clang-format'
@@ -27,7 +27,7 @@ if (-not $CanonicalFixture) {
     $CanonicalFixture = Join-Path $repoRoot 'tests\cpp-style-examples\wformat_supported_style_details.cpp'
 }
 if (-not $WorkDir) {
-    $WorkDir = Join-Path $repoRoot 'build\p0-format-tests'
+    $WorkDir = Join-Path $repoRoot 'build\structure-format-tests'
 }
 
 $FormatterExe = [System.IO.Path]::GetFullPath($FormatterExe)
@@ -47,20 +47,30 @@ foreach ($requiredFile in @(
     }
 }
 if (-not (Test-Path -LiteralPath $CaseDir -PathType Container)) {
-    throw "P0 case directory was not found: $CaseDir"
+    throw "Structure case directory was not found: $CaseDir"
 }
 
 $caseIds = @(
-    'closing-parenthesis-argument-indent',
-    'force-multiline-function-signatures',
-    'context-sensitive-braced-initializers',
-    'blank-line-before-return'
+    'break-constructor-destructor-specifiers',
+    'single-argument-call-compaction',
+    'nested-aggregate-brace-expansion',
+    'requires-expression-brace-layout',
+    'parameter-pack-ellipsis-spacing',
+    'annotation-function-pointer-spacing',
+    'integer-literal-case-normalization',
+    'blank-lines-around-control-statements',
+    'cross-directive-macro-alignment'
 )
 $optionCases = [ordered]@{
-    ArgumentIndentedClosingParentheses = 'closing-parenthesis-argument-indent'
-    ForceMultilineFunctionSignatures = 'force-multiline-function-signatures'
-    ContextSensitiveBracedInitializers = 'context-sensitive-braced-initializers'
-    BlankLineBeforeReturn = 'blank-line-before-return'
+    BreakConstructorDestructorSpecifiers = 'break-constructor-destructor-specifiers'
+    CompactSingleArgumentCalls = 'single-argument-call-compaction'
+    ExpandNestedAggregateBraces = 'nested-aggregate-brace-expansion'
+    BreakRequiresExpressionBraces = 'requires-expression-brace-layout'
+    SpaceParameterPackEllipses = 'parameter-pack-ellipsis-spacing'
+    SpaceAnnotationsAndFunctionPointers = 'annotation-function-pointer-spacing'
+    NormalizeIntegerLiteralCase = 'integer-literal-case-normalization'
+    BlankLinesAroundControlStatements = 'blank-lines-around-control-statements'
+    AlignMacrosAcrossDirectives = 'cross-directive-macro-alignment'
 }
 
 if (Test-Path -LiteralPath $WorkDir) {
@@ -68,26 +78,30 @@ if (Test-Path -LiteralPath $WorkDir) {
 }
 [void](New-Item -ItemType Directory -Path $WorkDir)
 
-$p0StyleLines = @([System.IO.File]::ReadAllLines($StyleFile))
-$extensionIndex = [Array]::IndexOf($p0StyleLines, 'WFormatExtensions:')
+$structureStyleLines = @([System.IO.File]::ReadAllLines($StyleFile))
+$extensionIndex = [Array]::IndexOf($structureStyleLines, 'WFormatExtensions:')
 if ($extensionIndex -lt 0) {
-    throw 'P0 style does not contain WFormatExtensions.'
+    throw 'Structure style does not contain WFormatExtensions.'
 }
-$upstreamPrefix = ($p0StyleLines[0..($extensionIndex - 1)] -join "`n").TrimEnd()
+$upstreamPrefix = ($structureStyleLines[0..($extensionIndex - 1)] -join "`n").TrimEnd()
 $upstreamStyle = [System.IO.File]::ReadAllText($UpstreamStyleFile).
     Replace("`r`n", "`n").
     Replace(
         '# Closest pure clang-format 20.1.8 approximation of wformat 0.1.6.',
-        '# P0 extension of the closest clang-format 20.1.8 approximation of wformat 0.1.6.'
+        "# Structural layout, spacing, and post-format extensions of the closest`n# clang-format 20.1.8 approximation."
     ).
     Replace(
         '# Residual and partially supported behaviors are cataloged by the style-gap audit.',
         '# The upstream option prefix is checked against wformat-target.clang-format.'
     ).
+    Replace(
+        "AlignConsecutiveAssignments:`n  Enabled: true",
+        "AlignConsecutiveAssignments:`n  Enabled: false"
+    ).
     Replace("`n...`n", "`n").
     TrimEnd()
 if ($upstreamPrefix -cne $upstreamStyle) {
-    throw 'P0 style upstream options drifted from wformat-target.clang-format.'
+    throw 'Structure style upstream options drifted from wformat-target.clang-format.'
 }
 
 $disabledDump = (& $FormatterExe -style=LLVM -dump-config 2>&1) -join "`n"
@@ -106,14 +120,23 @@ if ($LASTEXITCODE -ne 0) {
     throw "Enabled extension dump-config failed with exit code $LASTEXITCODE."
 }
 foreach ($option in @(
-    'ArgumentIndentedClosingParentheses',
-    'ForceMultilineFunctionSignatures',
-    'ContextSensitiveBracedInitializers',
-    'BlankLineBeforeReturn'
+    'BreakConstructorDestructorSpecifiers',
+    'CompactSingleArgumentCalls',
+    'ExpandNestedAggregateBraces',
+    'BreakRequiresExpressionBraces',
+    'SpaceParameterPackEllipses',
+    'SpaceAnnotationsAndFunctionPointers',
+    'NormalizeIntegerLiteralCase',
+    'BlankLinesAroundControlStatements',
+    'AlignMacrosAcrossDirectives'
 )) {
     if (-not $enabledDump.Contains("${option}: true")) {
         throw "Enabled dump-config did not preserve $option."
     }
+}
+if ($enabledDump -notmatch
+    '(?s)AlignConsecutiveAssignments:.*?Enabled:\s+false') {
+    throw 'Structure style did not disable consecutive assignment alignment.'
 }
 
 function Get-NormalizedText {
@@ -126,7 +149,12 @@ function Get-NormalizedText {
 
 foreach ($caseId in $caseIds) {
     $inputPath = Join-Path $CaseDir "$caseId.input.cpp"
-    $targetPath = Join-Path $CaseDir "$caseId.wformat.cpp"
+    $targetSuffix = if ($caseId -ceq 'nested-aggregate-brace-expansion') {
+        'reviewed.cpp'
+    } else {
+        'wformat.cpp'
+    }
+    $targetPath = Join-Path $CaseDir "$caseId.$targetSuffix"
     $actualPath = Join-Path $WorkDir "$caseId.actual.cpp"
     foreach ($requiredFile in @($inputPath, $targetPath)) {
         if (-not (Test-Path -LiteralPath $requiredFile -PathType Leaf)) {
@@ -143,7 +171,7 @@ foreach ($caseId in $caseIds) {
     $firstPass = Get-NormalizedText -Path $actualPath
     $target = Get-NormalizedText -Path $targetPath
     if ($firstPass -cne $target) {
-        throw "$caseId output differs from its checked-in approved target."
+        throw "$caseId output differs from its checked-in WFormat target."
     }
 
     & $FormatterExe "-style=file:$StyleFile" -i $actualPath
@@ -164,7 +192,7 @@ foreach ($entry in $optionCases.GetEnumerator()) {
     $styleText = [System.IO.File]::ReadAllText($StyleFile)
     $enabledSetting = "  ${option}: true"
     if (-not $styleText.Contains($enabledSetting)) {
-        throw "P0 style is missing enabled option $option."
+        throw "Structure style is missing enabled option $option."
     }
     [System.IO.File]::WriteAllText(
         $optionStyle,
@@ -174,7 +202,12 @@ foreach ($entry in $optionCases.GetEnumerator()) {
 
     $actualPath = Join-Path $WorkDir "$option.disabled.cpp"
     $inputPath = Join-Path $CaseDir "$caseId.input.cpp"
-    $targetPath = Join-Path $CaseDir "$caseId.wformat.cpp"
+    $targetSuffix = if ($caseId -ceq 'nested-aggregate-brace-expansion') {
+        'reviewed.cpp'
+    } else {
+        'wformat.cpp'
+    }
+    $targetPath = Join-Path $CaseDir "$caseId.$targetSuffix"
     Copy-Item -LiteralPath $inputPath -Destination $actualPath
     & $FormatterExe "-style=file:$optionStyle" -i $actualPath
     if ($LASTEXITCODE -ne 0) {
@@ -196,27 +229,25 @@ $multiSectionInput = Join-Path $WorkDir 'multi-section.cpp'
 Language: Cpp
 BasedOnStyle: LLVM
 WFormatExtensions:
-  BlankLineBeforeReturn: true
+  NormalizeIntegerLiteralCase: true
 ---
 Language: CSharp
 BasedOnStyle: Microsoft
 WFormatExtensions:
-  BlankLineBeforeReturn: false
+  NormalizeIntegerLiteralCase: false
 '@,
     [System.Text.UTF8Encoding]::new($false)
 )
 [System.IO.File]::WriteAllText(
     $multiSectionInput,
-    "int run() { work(); return 1; }`n",
+    "unsigned value = 0Xdeadul;`n",
     [System.Text.UTF8Encoding]::new($false)
 )
 & $FormatterExe "-style=file:$multiSectionStyle" -i $multiSectionInput
 if ($LASTEXITCODE -ne 0) {
     throw "Multi-section extension formatting failed with exit code $LASTEXITCODE."
 }
-if (-not (Get-NormalizedText -Path $multiSectionInput).Contains(
-    "work();`n`n  return 1;"
-)) {
+if (-not [System.IO.File]::ReadAllText($multiSectionInput).Contains('0xDEADUL')) {
     throw 'C++ formatting did not select its language-specific extension style.'
 }
 Write-Host 'PASS language-specific extension style'
@@ -225,17 +256,9 @@ $finalizedInput = Join-Path $WorkDir 'finalized.cpp'
 [System.IO.File]::WriteAllText(
     $finalizedInput,
     @'
-int formatted()
-{
-    work();
-    return 1;
-}
+unsigned formatted = 0Xdeadul;
 // clang-format off
-int untouched()
-{
-    work();
-    return 2;
-}
+unsigned untouched = 0Xdeadul;
 // clang-format on
 '@,
     [System.Text.UTF8Encoding]::new($false)
@@ -244,28 +267,81 @@ int untouched()
 if ($LASTEXITCODE -ne 0) {
     throw "Finalized-region formatting failed with exit code $LASTEXITCODE."
 }
-$finalizedText = Get-NormalizedText -Path $finalizedInput
-if (-not $finalizedText.Contains("work();`n`n    return 1;") -or
-    -not $finalizedText.Contains("work();`n    return 2;")) {
+$finalizedText = [System.IO.File]::ReadAllText($finalizedInput)
+if (-not $finalizedText.Contains('formatted = 0xDEADUL') -or
+    -not $finalizedText.Contains('untouched = 0Xdeadul')) {
     throw 'Enabled extension formatting changed a clang-format-off region.'
 }
 Write-Host 'PASS finalized region preservation'
+
+$aggregateInteractionInput = Join-Path $WorkDir 'aggregate-integer.cpp'
+[System.IO.File]::WriteAllText(
+    $aggregateInteractionInput,
+    "unsigned values[1][1][1] = {{{0Xdeadul}}};`n",
+    [System.Text.UTF8Encoding]::new($false)
+)
+& $FormatterExe "-style=file:$StyleFile" -i $aggregateInteractionInput
+if ($LASTEXITCODE -ne 0) {
+    throw "Aggregate/integer interaction failed with exit code $LASTEXITCODE."
+}
+$aggregateInteractionText =
+    [System.IO.File]::ReadAllText($aggregateInteractionInput)
+if (-not $aggregateInteractionText.Contains('0xDEADUL') -or
+    -not $aggregateInteractionText.Contains("`n{")) {
+    throw 'Aggregate expansion dropped integer-literal normalization.'
+}
+Write-Host 'PASS aggregate/integer interaction'
+
+$aggregateTriviaInput = Join-Path $WorkDir 'aggregate-trivia.cpp'
+[System.IO.File]::WriteAllText(
+    $aggregateTriviaInput,
+    "unsigned values[1][1][1] = /* keep */ {{{0Xdeadul}}};`n",
+    [System.Text.UTF8Encoding]::new($false)
+)
+& $FormatterExe "-style=file:$StyleFile" -i $aggregateTriviaInput
+if ($LASTEXITCODE -ne 0) {
+    throw "Aggregate trivia preservation failed with exit code $LASTEXITCODE."
+}
+$aggregateTriviaText = [System.IO.File]::ReadAllText($aggregateTriviaInput)
+if (-not $aggregateTriviaText.Contains('/* keep */') -or
+    -not $aggregateTriviaText.Contains('0xDEADUL')) {
+    throw 'Aggregate processing deleted trivia or skipped safe token rewriting.'
+}
+Write-Host 'PASS aggregate trivia preservation'
+
+$inheritanceInput = Join-Path $WorkDir 'ordinary-inheritance.cpp'
+[System.IO.File]::WriteAllText(
+    $inheritanceInput,
+    "struct Derived : Base {};`n",
+    [System.Text.UTF8Encoding]::new($false)
+)
+$inheritanceStyle =
+    '{BasedOnStyle: LLVM, WFormatExtensions: {SpaceParameterPackEllipses: true}}'
+& $FormatterExe "-style=$inheritanceStyle" -i $inheritanceInput
+if ($LASTEXITCODE -ne 0) {
+    throw "Ordinary inheritance isolation failed with exit code $LASTEXITCODE."
+}
+if ((Get-NormalizedText -Path $inheritanceInput) -cne
+    'struct Derived : Base {};') {
+    throw 'Parameter-pack spacing changed ordinary inheritance layout.'
+}
+Write-Host 'PASS ordinary inheritance isolation'
 
 $canonicalActual = Join-Path $WorkDir 'canonical.actual.cpp'
 Copy-Item -LiteralPath $CanonicalFixture -Destination $canonicalActual
 & $FormatterExe "-style=file:$StyleFile" -i $canonicalActual
 if ($LASTEXITCODE -ne 0) {
-    throw "Canonical P0 formatting failed with exit code $LASTEXITCODE."
+    throw "Canonical structure formatting failed with exit code $LASTEXITCODE."
 }
 $canonicalFirstHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $canonicalActual).Hash
 & $FormatterExe "-style=file:$StyleFile" -i $canonicalActual
 if ($LASTEXITCODE -ne 0) {
-    throw "Canonical P0 second pass failed with exit code $LASTEXITCODE."
+    throw "Canonical structure second pass failed with exit code $LASTEXITCODE."
 }
 $canonicalSecondHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $canonicalActual).Hash
 if ($canonicalFirstHash -cne $canonicalSecondHash) {
-    throw 'Canonical P0 output is not byte-identical across two passes.'
+    throw 'Canonical structure output is not byte-identical across two passes.'
 }
-Write-Host 'PASS canonical P0 idempotence'
+Write-Host 'PASS canonical structure idempotence'
 
-Write-Host "Validated $($caseIds.Count) P0 formatting contracts."
+Write-Host "Validated $($caseIds.Count) structure formatting contracts."

@@ -71,20 +71,20 @@ set(CUSTOM_CPP_STYLE_EXAMPLE_SOURCE_DIR
   CACHE PATH
   "Directory containing the canonical C++ fixture used by the format-cpp-style-files target.")
 
-set(CUSTOM_CPP_P0_STYLE_FILE
-  "${CMAKE_CURRENT_SOURCE_DIR}/tests/cpp-style-examples/wformat-p0.clang-format"
+set(CUSTOM_CPP_SIGNATURE_STYLE_FILE
+  "${CMAKE_CURRENT_SOURCE_DIR}/tests/cpp-style-examples/wformat-signatures.clang-format"
   CACHE FILEPATH
-  "P0 C++ target style file used by native extension targets.")
+  "Signature, initializer, and return target style file.")
 
-set(CUSTOM_CPP_P1_STYLE_FILE
-  "${CMAKE_CURRENT_SOURCE_DIR}/tests/cpp-style-examples/wformat-p1.clang-format"
+set(CUSTOM_CPP_STRUCTURE_STYLE_FILE
+  "${CMAKE_CURRENT_SOURCE_DIR}/tests/cpp-style-examples/wformat-structures.clang-format"
   CACHE FILEPATH
-  "P0+P1 C++ target style file used by native extension targets.")
+  "Structural layout, spacing, and post-format target style file.")
 
-set(CUSTOM_CPP_P2_STYLE_FILE
-  "${CMAKE_CURRENT_SOURCE_DIR}/tests/cpp-style-examples/wformat-p2.clang-format"
+set(CUSTOM_CPP_COMPLETE_STYLE_FILE
+  "${CMAKE_CURRENT_SOURCE_DIR}/tests/cpp-style-examples/wformat-complete.clang-format"
   CACHE FILEPATH
-  "P0+P1+P2 C++ target style file used by native extension targets.")
+  "Complete reviewed C++ target style file.")
 
 set(CUSTOM_BUILD_JOBS
   ""
@@ -412,7 +412,7 @@ if(POWERSHELL_EXECUTABLE)
       -FormatterExe "${_zcf_exe}"
       -InputDir "${CUSTOM_CPP_STYLE_EXAMPLE_SOURCE_DIR}"
       -OutputDir "${CMAKE_BINARY_DIR}/cpp-style-files"
-      -StyleFile "${CUSTOM_CPP_P0_STYLE_FILE}"
+      -StyleFile "${CUSTOM_CPP_SIGNATURE_STYLE_FILE}"
     DEPENDS zcf
     USES_TERMINAL)
 
@@ -425,33 +425,33 @@ if(POWERSHELL_EXECUTABLE)
     DEPENDS zcf
     USES_TERMINAL)
 
-  add_custom_target(validate-p0-format
+  add_custom_target(validate-signature-format
     COMMAND "${POWERSHELL_EXECUTABLE}" -NoProfile -ExecutionPolicy Bypass
-      -File "${CMAKE_CURRENT_SOURCE_DIR}/tests/validate-p0-format.ps1"
+      -File "${CMAKE_CURRENT_SOURCE_DIR}/tests/validate-signature-format.ps1"
       -FormatterExe "${_zcf_exe}"
-      -StyleFile "${CUSTOM_CPP_P0_STYLE_FILE}"
+      -StyleFile "${CUSTOM_CPP_SIGNATURE_STYLE_FILE}"
       -UpstreamStyleFile "${CMAKE_CURRENT_SOURCE_DIR}/tests/cpp-style-examples/wformat-target.clang-format"
-      -WorkDir "${CMAKE_BINARY_DIR}/p0-format-tests"
+      -WorkDir "${CMAKE_BINARY_DIR}/signature-format-tests"
     DEPENDS zcf
     USES_TERMINAL)
 
-  add_custom_target(validate-p1-format
+  add_custom_target(validate-structure-format
     COMMAND "${POWERSHELL_EXECUTABLE}" -NoProfile -ExecutionPolicy Bypass
-      -File "${CMAKE_CURRENT_SOURCE_DIR}/tests/validate-p1-format.ps1"
+      -File "${CMAKE_CURRENT_SOURCE_DIR}/tests/validate-structure-format.ps1"
       -FormatterExe "${_zcf_exe}"
-      -StyleFile "${CUSTOM_CPP_P1_STYLE_FILE}"
+      -StyleFile "${CUSTOM_CPP_STRUCTURE_STYLE_FILE}"
       -UpstreamStyleFile "${CMAKE_CURRENT_SOURCE_DIR}/tests/cpp-style-examples/wformat-target.clang-format"
-      -WorkDir "${CMAKE_BINARY_DIR}/p1-format-tests"
+      -WorkDir "${CMAKE_BINARY_DIR}/structure-format-tests"
     DEPENDS zcf
     USES_TERMINAL)
 
-  add_custom_target(validate-p2-format
+  add_custom_target(validate-complete-format
     COMMAND "${POWERSHELL_EXECUTABLE}" -NoProfile -ExecutionPolicy Bypass
-      -File "${CMAKE_CURRENT_SOURCE_DIR}/tests/validate-p2-format.ps1"
+      -File "${CMAKE_CURRENT_SOURCE_DIR}/tests/validate-complete-format.ps1"
       -FormatterExe "${_zcf_exe}"
-      -StyleFile "${CUSTOM_CPP_P2_STYLE_FILE}"
+      -StyleFile "${CUSTOM_CPP_COMPLETE_STYLE_FILE}"
       -UpstreamStyleFile "${CMAKE_CURRENT_SOURCE_DIR}/tests/cpp-style-examples/wformat-target.clang-format"
-      -WorkDir "${CMAKE_BINARY_DIR}/p2-format-tests"
+      -WorkDir "${CMAKE_BINARY_DIR}/complete-format-tests"
     DEPENDS zcf
     USES_TERMINAL)
 

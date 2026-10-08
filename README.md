@@ -203,9 +203,9 @@ cmake --build build/release --target smoke-zcf
 Custom-policy contract tests:
 
 ```text
-cmake --build build/release --target validate-p0-format
-cmake --build build/release --target validate-p1-format
-cmake --build build/release --target validate-p2-format
+cmake --build build/release --target validate-signature-format
+cmake --build build/release --target validate-structure-format
+cmake --build build/release --target validate-complete-format
 ```
 
 Upstream parity:

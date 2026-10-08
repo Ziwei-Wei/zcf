@@ -1,4 +1,4 @@
-#include "extensions/clang-format/P2Hooks.h"
+#include "extensions/clang-format/ExtensionPasses.h"
 
 #include "ContinuationIndenter.h"
 #include "FormatToken.h"
@@ -94,7 +94,7 @@ void forceExplicitConstructorParameters(AnnotatedLine &Line) {
 
 } // namespace
 
-void customizeP2AnnotatedLine(AnnotatedLine &Line) {
+void customizeDeclarationLayout(AnnotatedLine &Line) {
   const auto *Style = getActiveExtensionStyleConst();
   if (!Style)
     return;
@@ -129,8 +129,8 @@ void customizeP2AnnotatedLine(AnnotatedLine &Line) {
     forceExplicitConstructorParameters(Line);
 }
 
-std::optional<unsigned> getP2NewLineColumn(const LineState &State,
-                                           const FormatStyle &) {
+std::optional<unsigned> getDeclarationNewLineColumn(const LineState &State,
+                                                    const FormatStyle &) {
   const auto *Style = getActiveExtensionStyleConst();
   if (!Style || !State.NextToken || State.Stack.empty())
     return std::nullopt;

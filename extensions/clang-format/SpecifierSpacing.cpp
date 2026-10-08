@@ -1,4 +1,4 @@
-#include "extensions/clang-format/P2Hooks.h"
+#include "extensions/clang-format/ExtensionPasses.h"
 
 #include "FormatToken.h"
 #include "TokenAnnotator.h"
@@ -18,8 +18,8 @@ bool isDeleteWithReasonParen(const FormatToken &Right) {
 
 } // namespace
 
-std::optional<bool> getP2SpaceRequiredBefore(const AnnotatedLine &Line,
-                                             const FormatToken &Right) {
+std::optional<bool> getSpecifierSpaceRequiredBefore(const AnnotatedLine &Line,
+                                                    const FormatToken &Right) {
   const auto *Style = getActiveExtensionStyleConst();
   if (!Style || !Style->SpaceAfterParenthesizedSpecifiers ||
       Line.InPPDirective || Line.InMacroBody || !Right.Previous) {

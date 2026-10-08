@@ -1,4 +1,4 @@
-#include "extensions/clang-format/P2Hooks.h"
+#include "extensions/clang-format/ExtensionPasses.h"
 
 #include "AffectedRangeManager.h"
 #include "TokenAnalyzer.h"
@@ -746,7 +746,7 @@ void addQueuedReplacements(const std::vector<PendingReplacement> &Pending,
         continue;
       }
       if (Current.BeginOffset < Previous->EndOffset) {
-        llvm::errs() << "P2PostFormat conflicting replacements ["
+        llvm::errs() << "BoundaryPostFormat conflicting replacements ["
                      << Current.Context << "] and [" << Previous->Context
                      << "] at offsets " << Current.BeginOffset << "-"
                      << Current.EndOffset << ".\n";
@@ -758,7 +758,7 @@ void addQueuedReplacements(const std::vector<PendingReplacement> &Pending,
         SourceManager, StartOfFile.getLocWithOffset(Current.BeginOffset),
         Current.EndOffset - Current.BeginOffset, Current.Text));
     if (Error) {
-      llvm::errs() << "P2PostFormat failed to add replacement ["
+      llvm::errs() << "BoundaryPostFormat failed to add replacement ["
                    << Current.Context << "] at offsets " << Current.BeginOffset
                    << "-" << Current.EndOffset << ": "
                    << llvm::toString(std::move(Error)) << "\n";
@@ -771,7 +771,7 @@ void addQueuedReplacements(const std::vector<PendingReplacement> &Pending,
 } // namespace
 
 std::pair<tooling::Replacements, unsigned>
-runP2PostFormatPass(const Environment &Env, const FormatStyle &Style) {
+runBoundaryPostFormatPass(const Environment &Env, const FormatStyle &Style) {
   const auto *ExtensionStyle = getActiveExtensionStyleConst();
   if (!ExtensionStyle || Style.Language != FormatStyle::LK_Cpp)
     return {};

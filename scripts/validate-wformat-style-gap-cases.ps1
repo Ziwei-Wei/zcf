@@ -25,7 +25,7 @@ if (-not $ZcfExe) {
 }
 if (-not $ReviewedStyleFile) {
     $ReviewedStyleFile =
-        Join-Path $repoRoot 'tests\cpp-style-examples\wformat-p1.clang-format'
+        Join-Path $repoRoot 'tests\cpp-style-examples\wformat-structures.clang-format'
 }
 $Manifest = [System.IO.Path]::GetFullPath($Manifest)
 $WorkDir = [System.IO.Path]::GetFullPath($WorkDir)

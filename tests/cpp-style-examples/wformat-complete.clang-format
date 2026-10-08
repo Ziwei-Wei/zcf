@@ -1,5 +1,6 @@
 ---
-# P0 extension of the closest clang-format 20.1.8 approximation of wformat 0.1.6.
+# Complete reviewed extension policy for the closest clang-format 20.1.8
+# approximation.
 # The upstream option prefix is checked against wformat-target.clang-format.
 Language: Cpp
 BasedOnStyle: LLVM
@@ -11,7 +12,7 @@ AccessModifierOffset: -4
 AlignAfterOpenBracket: BlockIndent
 AlignArrayOfStructures: Right
 AlignConsecutiveAssignments:
-  Enabled: true
+  Enabled: false
   AcrossEmptyLines: false
   AcrossComments: true
   AlignCompound: true
@@ -155,4 +156,26 @@ WFormatExtensions:
   ForceMultilineFunctionSignatures: true
   ContextSensitiveBracedInitializers: true
   BlankLineBeforeReturn: true
+  BreakConstructorDestructorSpecifiers: true
+  CompactSingleArgumentCalls: true
+  ExpandNestedAggregateBraces: true
+  BreakRequiresExpressionBraces: true
+  SpaceParameterPackEllipses: true
+  SpaceAnnotationsAndFunctionPointers: true
+  NormalizeIntegerLiteralCase: true
+  BlankLinesAroundControlStatements: true
+  AlignMacrosAcrossDirectives: true
+  DeindentQualifiedFunctionNames: true
+  BreakRefQualifierRequires: true
+  SpaceAfterParenthesizedSpecifiers: true
+  BlankLinesAroundLabels: true
+  IndentAttributedLabels: true
+  SeparateClosingDirectiveComments: true
+  ProgressiveCallExpansion: true
+  ProgressiveArithmeticExpansion: true
+  CompactTwoOperandExpressions: true
+  BodyDrivenLambdaExpansion: true
+  VerticalTernaryExpressions: true
+  SeparateSwitchCaseBlocks: true
+  ScopeStyleNestedTemplates: true
 ...

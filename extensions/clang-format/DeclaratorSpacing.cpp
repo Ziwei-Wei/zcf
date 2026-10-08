@@ -1,4 +1,4 @@
-#include "extensions/clang-format/P1Hooks.h"
+#include "extensions/clang-format/ExtensionPasses.h"
 
 #include "FormatToken.h"
 #include "TokenAnnotator.h"
@@ -148,8 +148,8 @@ bool needsFunctionPointerDeclaratorSpace(const AnnotatedLine &Line,
 
 } // namespace
 
-std::optional<bool> getP1SpaceRequiredBefore(const AnnotatedLine &Line,
-                                             const FormatToken &Right) {
+std::optional<bool> getDeclaratorSpaceRequiredBefore(const AnnotatedLine &Line,
+                                                     const FormatToken &Right) {
   const auto *Style = getActiveExtensionStyleConst();
   if (!Style || Line.InPPDirective || Line.InMacroBody || !Right.Previous)
     return std::nullopt;

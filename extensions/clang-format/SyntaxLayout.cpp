@@ -1,4 +1,4 @@
-#include "extensions/clang-format/P1Hooks.h"
+#include "extensions/clang-format/ExtensionPasses.h"
 
 #include "ContinuationIndenter.h"
 #include "FormatToken.h"
@@ -919,8 +919,8 @@ bool isExpandedArithmeticCall(const FormatToken &LeftParen) {
 
 } // namespace
 
-void customizeP1AnnotatedLine(AnnotatedLine &Line,
-                              const FormatStyle &FormatStyle) {
+void customizeSyntaxLayout(AnnotatedLine &Line,
+                           const FormatStyle &FormatStyle) {
   const auto *Style = getActiveExtensionStyleConst();
   if (!Style)
     return;
@@ -956,8 +956,8 @@ void customizeP1AnnotatedLine(AnnotatedLine &Line,
     breakFunctionPointerParameters(Line);
 }
 
-std::optional<unsigned> getP1NewLineColumn(const LineState &State,
-                                           const FormatStyle &FormatStyle) {
+std::optional<unsigned> getSyntaxNewLineColumn(const LineState &State,
+                                               const FormatStyle &FormatStyle) {
   const auto *Style = getActiveExtensionStyleConst();
   if (!Style || !State.NextToken || State.Stack.empty()) {
     return std::nullopt;

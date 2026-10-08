@@ -1,7 +1,6 @@
-#include "extensions/clang-format/P1Hooks.h"
-#include "extensions/clang-format/P2Hooks.h"
-#include "integration/clang-format/ExtensionContext.h"
 #include "integration/clang-format/ExtensionHooks.h"
+#include "extensions/clang-format/ExtensionPasses.h"
+#include "integration/clang-format/ExtensionContext.h"
 
 #include "ContinuationIndenter.h"
 #include "FormatToken.h"
@@ -148,8 +147,8 @@ void customizeAnnotatedLine(AnnotatedLine &Line,
       forceMultilineList(*Token);
     }
   }
-  customizeP1AnnotatedLine(Line, FormatStyle);
-  customizeP2AnnotatedLine(Line);
+  customizeSyntaxLayout(Line, FormatStyle);
+  customizeDeclarationLayout(Line);
 }
 
 std::optional<bool> getSpaceRequiredBefore(const AnnotatedLine &Line,
@@ -161,17 +160,17 @@ std::optional<bool> getSpaceRequiredBefore(const AnnotatedLine &Line,
       Right.is(BK_BracedInit) && isCtorMemberBracedInitializer(Line, Right)) {
     return false;
   }
-  if (auto Required = getP1SpaceRequiredBefore(Line, Right))
+  if (auto Required = getDeclaratorSpaceRequiredBefore(Line, Right))
     return Required;
-  return getP2SpaceRequiredBefore(Line, Right);
+  return getSpecifierSpaceRequiredBefore(Line, Right);
 }
 
 std::optional<unsigned>
 getExtensionNewLineColumn(const LineState &State,
                           const FormatStyle &FormatStyle) {
-  if (auto Column = getP1NewLineColumn(State, FormatStyle))
+  if (auto Column = getSyntaxNewLineColumn(State, FormatStyle))
     return Column;
-  if (auto Column = getP2NewLineColumn(State, FormatStyle))
+  if (auto Column = getDeclarationNewLineColumn(State, FormatStyle))
     return Column;
 
   const auto *Style = getActiveExtensionStyleConst();
@@ -190,15 +189,16 @@ getExtensionNewLineColumn(const LineState &State,
 
 std::pair<tooling::Replacements, unsigned>
 runExtensionPostFormatPass(const Environment &Env, const FormatStyle &Style) {
-  auto Result = runP1PostFormatPass(Env, Style);
-  auto P2 = runP2PostFormatPass(Env, Style);
-  for (const auto &Replacement : P2.first) {
+  auto Result = runStructuralPostFormatPass(Env, Style);
+  auto Boundary = runBoundaryPostFormatPass(Env, Style);
+  for (const auto &Replacement : Boundary.first) {
     if (auto Error = Result.first.add(Replacement)) {
-      llvm::errs() << "P2 post-format replacement conflicts with P1: "
-                   << llvm::toString(std::move(Error)) << "\n";
+      llvm::errs()
+          << "Boundary post-format replacement conflicts with structural pass: "
+          << llvm::toString(std::move(Error)) << "\n";
     }
   }
-  Result.second += P2.second;
+  Result.second += Boundary.second;
   return Result;
 }
 

@@ -1,5 +1,6 @@
 ---
-# P0 and P1 extensions of the closest clang-format 20.1.8 approximation.
+# Structural layout, spacing, and post-format extensions of the closest
+# clang-format 20.1.8 approximation.
 # The upstream option prefix is checked against wformat-target.clang-format.
 Language: Cpp
 BasedOnStyle: LLVM

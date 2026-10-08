@@ -15,7 +15,7 @@ Set-StrictMode -Version Latest
 
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 if (-not $StyleFile) {
-    $StyleFile = Join-Path $repoRoot 'tests\cpp-style-examples\wformat-p2.clang-format'
+    $StyleFile = Join-Path $repoRoot 'tests\cpp-style-examples\wformat-complete.clang-format'
 }
 if (-not $UpstreamStyleFile) {
     $UpstreamStyleFile = Join-Path $repoRoot 'tests\cpp-style-examples\wformat-target.clang-format'
@@ -27,7 +27,7 @@ if (-not $CanonicalFixture) {
     $CanonicalFixture = Join-Path $repoRoot 'tests\cpp-style-examples\wformat_supported_style_details.cpp'
 }
 if (-not $WorkDir) {
-    $WorkDir = Join-Path $repoRoot 'build\p2-format-tests'
+    $WorkDir = Join-Path $repoRoot 'build\complete-format-tests'
 }
 
 $FormatterExe = [System.IO.Path]::GetFullPath($FormatterExe)
@@ -47,7 +47,7 @@ foreach ($requiredFile in @(
     }
 }
 if (-not (Test-Path -LiteralPath $CaseDir -PathType Container)) {
-    throw "P2 case directory was not found: $CaseDir"
+    throw "Complete-policy case directory was not found: $CaseDir"
 }
 
 $caseIds = @(
@@ -73,17 +73,17 @@ if (Test-Path -LiteralPath $WorkDir) {
 }
 [void](New-Item -ItemType Directory -Path $WorkDir)
 
-$p2StyleLines = @([System.IO.File]::ReadAllLines($StyleFile))
-$extensionIndex = [Array]::IndexOf($p2StyleLines, 'WFormatExtensions:')
+$completeStyleLines = @([System.IO.File]::ReadAllLines($StyleFile))
+$extensionIndex = [Array]::IndexOf($completeStyleLines, 'WFormatExtensions:')
 if ($extensionIndex -lt 0) {
-    throw 'P2 style does not contain WFormatExtensions.'
+    throw 'Complete style does not contain WFormatExtensions.'
 }
-$upstreamPrefix = ($p2StyleLines[0..($extensionIndex - 1)] -join "`n").TrimEnd()
+$upstreamPrefix = ($completeStyleLines[0..($extensionIndex - 1)] -join "`n").TrimEnd()
 $upstreamStyle = [System.IO.File]::ReadAllText($UpstreamStyleFile).
     Replace("`r`n", "`n").
     Replace(
         '# Closest pure clang-format 20.1.8 approximation of wformat 0.1.6.',
-        '# P0, P1, and P2 extensions of the closest clang-format 20.1.8 approximation.'
+        "# Complete reviewed extension policy for the closest clang-format 20.1.8`n# approximation."
     ).
     Replace(
         '# Residual and partially supported behaviors are cataloged by the style-gap audit.',
@@ -96,7 +96,7 @@ $upstreamStyle = [System.IO.File]::ReadAllText($UpstreamStyleFile).
     Replace("`n...`n", "`n").
     TrimEnd()
 if ($upstreamPrefix -cne $upstreamStyle) {
-    throw 'P2 style upstream options drifted from wformat-target.clang-format.'
+    throw 'Complete style upstream options drifted from wformat-target.clang-format.'
 }
 
 $disabledDump = (& $FormatterExe -style=LLVM -dump-config 2>&1) -join "`n"
@@ -713,7 +713,7 @@ foreach ($entry in $optionCases.GetEnumerator()) {
     }
     $enabledSetting = "  ${option}: true"
     if (-not $styleText.Contains($enabledSetting)) {
-        throw "P2 style is missing enabled option $option."
+        throw "Complete style is missing enabled option $option."
     }
     [System.IO.File]::WriteAllText(
         $optionStyle,
@@ -973,17 +973,17 @@ $canonicalActual = Join-Path $WorkDir 'canonical.actual.cpp'
 Copy-Item -LiteralPath $CanonicalFixture -Destination $canonicalActual
 & $FormatterExe "-style=file:$StyleFile" -i $canonicalActual
 if ($LASTEXITCODE -ne 0) {
-    throw "Canonical P2 formatting failed with exit code $LASTEXITCODE."
+    throw "Canonical complete-policy formatting failed with exit code $LASTEXITCODE."
 }
 $canonicalFirstHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $canonicalActual).Hash
 & $FormatterExe "-style=file:$StyleFile" -i $canonicalActual
 if ($LASTEXITCODE -ne 0) {
-    throw "Canonical P2 second pass failed with exit code $LASTEXITCODE."
+    throw "Canonical complete-policy second pass failed with exit code $LASTEXITCODE."
 }
 $canonicalSecondHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $canonicalActual).Hash
 if ($canonicalFirstHash -cne $canonicalSecondHash) {
-    throw 'Canonical P2 output is not byte-identical across two passes.'
+    throw 'Canonical complete-policy output is not byte-identical across two passes.'
 }
-Write-Host 'PASS canonical P2 idempotence'
+Write-Host 'PASS canonical complete-policy idempotence'
 
-Write-Host 'Validated 6 P2 extension contracts, 4 reviewed preset contracts, and 1 reviewed native contract.'
+Write-Host 'Validated 6 specialized extension contracts, 4 reviewed preset contracts, and 1 reviewed native contract.'

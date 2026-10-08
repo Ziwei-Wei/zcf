@@ -22,7 +22,7 @@
     "case-audit": "pwsh -File scripts\\audit-wformat-style-gaps.ps1 -Fixture tests\\wformat-style-gaps\\cases\\<case-id>.input.cpp -WorkDir build\\wformat-style-gap-cases\\<case-id>",
     "all-feature-cases": "pwsh -File scripts\\validate-wformat-style-gap-cases.ps1",
     "normalizer-only": "py -c \"from pathlib import Path; from wformat.normalizer import fix_with_tree_sitter; p=Path(r'tests\\wformat-style-gaps\\cases'); assert fix_with_tree_sitter((p/'wrapped-function-name-normalizer.input.cpp').read_text()) == (p/'wrapped-function-name.normalizer.cpp').read_text()\"",
-    "reviewed-preset-rules": "cmake --build build\\release --target validate-p2-format"
+    "reviewed-preset-rules": "cmake --build build\\release --target validate-complete-format"
   },
   "auditSummary": {
     "canonicalInputMatchesWformat": true,
@@ -68,7 +68,7 @@
         "prevalence": "very-high",
         "interaction": "low",
         "implementation": "none",
-        "priority": "P0"
+        "priority": "core"
       },
       "proof": {
         "command": "case-audit",
@@ -103,7 +103,7 @@
         "prevalence": "very-high",
         "interaction": "medium",
         "implementation": "none",
-        "priority": "P0"
+        "priority": "core"
       },
       "proof": {
         "command": "case-audit",
@@ -141,7 +141,7 @@
         "prevalence": "very-high",
         "interaction": "medium",
         "implementation": "none",
-        "priority": "P0"
+        "priority": "core"
       },
       "proof": {
         "command": "case-audit",
@@ -183,7 +183,7 @@
         "prevalence": "high",
         "interaction": "low",
         "implementation": "none",
-        "priority": "P0"
+        "priority": "core"
       },
       "proof": {
         "command": "case-audit",
@@ -233,7 +233,7 @@
         "prevalence": "medium",
         "interaction": "low",
         "implementation": "none",
-        "priority": "P1"
+        "priority": "common"
       },
       "proof": {
         "command": "case-audit",
@@ -263,7 +263,7 @@
         "prevalence": "medium",
         "interaction": "low",
         "implementation": "none",
-        "priority": "P1"
+        "priority": "common"
       },
       "proof": {
         "command": "normalizer-only",
@@ -294,7 +294,7 @@
         "prevalence": "high",
         "interaction": "high",
         "implementation": "medium",
-        "priority": "P1"
+        "priority": "common"
       },
       "proof": {
         "command": "case-audit",
@@ -332,7 +332,7 @@
         "prevalence": "high",
         "interaction": "high",
         "implementation": "medium",
-        "priority": "P1"
+        "priority": "common"
       },
       "proof": {
         "command": "full-audit",
@@ -362,7 +362,7 @@
         "prevalence": "very-high",
         "interaction": "high",
         "implementation": "medium",
-        "priority": "P1"
+        "priority": "common"
       },
       "proof": {
         "command": "case-audit",
@@ -392,7 +392,7 @@
         "prevalence": "low",
         "interaction": "low",
         "implementation": "none",
-        "priority": "P2"
+        "priority": "specialized"
       },
       "proof": {
         "command": "full-audit",
@@ -422,7 +422,7 @@
         "prevalence": "low",
         "interaction": "low",
         "implementation": "none",
-        "priority": "P2"
+        "priority": "specialized"
       },
       "proof": {
         "command": "full-audit",
@@ -452,10 +452,10 @@
         "prevalence": "low",
         "interaction": "low",
         "implementation": "none",
-        "priority": "P2"
+        "priority": "specialized"
       },
       "proof": {
-        "command": "validate-p2-format",
+        "command": "validate-complete-format",
         "observed": "LLVM 20.1.8 natively preserves spaces around deduction-guide, function trailing-return, and compound-requirement arrows. Removing the rejected WFormat-tightening override produces the reviewed target without a custom option."
       }
     }
@@ -513,7 +513,7 @@
         "prevalence": "very-high",
         "interaction": "high",
         "implementation": "medium",
-        "priority": "P0"
+        "priority": "core"
       },
       "proof": {
         "command": "case-audit",
@@ -564,7 +564,7 @@
         "prevalence": "very-high",
         "interaction": "high",
         "implementation": "high",
-        "priority": "P0"
+        "priority": "core"
       },
       "proof": {
         "command": "full-audit",
@@ -599,7 +599,7 @@
         "prevalence": "low",
         "interaction": "medium",
         "implementation": "medium",
-        "priority": "P2"
+        "priority": "specialized"
       },
       "proof": {
         "command": "case-audit",
@@ -637,7 +637,7 @@
         "prevalence": "medium",
         "interaction": "medium",
         "implementation": "medium",
-        "priority": "P1"
+        "priority": "common"
       },
       "proof": {
         "command": "case-audit",
@@ -676,7 +676,7 @@
         "prevalence": "low",
         "interaction": "low",
         "implementation": "low",
-        "priority": "P2"
+        "priority": "specialized"
       },
       "proof": {
         "command": "case-audit; full-audit",
@@ -723,7 +723,7 @@
         "prevalence": "medium",
         "interaction": "medium",
         "implementation": "medium",
-        "priority": "P1"
+        "priority": "common"
       },
       "proof": {
         "command": "case-audit; full-audit",
@@ -766,7 +766,7 @@
         "prevalence": "medium",
         "interaction": "high",
         "implementation": "high",
-        "priority": "P1"
+        "priority": "common"
       },
       "proof": {
         "command": "case-audit",
@@ -818,7 +818,7 @@
         "prevalence": "high",
         "interaction": "very-high",
         "implementation": "high",
-        "priority": "P0"
+        "priority": "core"
       },
       "proof": {
         "command": "case-audit",
@@ -862,10 +862,10 @@
         "prevalence": "medium",
         "interaction": "very-high",
         "implementation": "high",
-        "priority": "P1"
+        "priority": "common"
       },
       "proof": {
-        "command": "validate-p1-format",
+        "command": "validate-structure-format",
         "observed": "The reviewed policy renders each structural aggregate as an aligned brace scope while keeping scalar leaf rows compact. Native AlignArrayOfStructures continues to own two-level matrices."
       }
     },
@@ -898,7 +898,7 @@
         "prevalence": "medium",
         "interaction": "high",
         "implementation": "high",
-        "priority": "P1"
+        "priority": "common"
       },
       "proof": {
         "command": "full-audit",
@@ -937,7 +937,7 @@
         "prevalence": "low",
         "interaction": "high",
         "implementation": "high",
-        "priority": "P2"
+        "priority": "specialized"
       },
       "proof": {
         "command": "full-audit",
@@ -971,7 +971,7 @@
         "prevalence": "very-high",
         "interaction": "high",
         "implementation": "medium",
-        "priority": "P0"
+        "priority": "core"
       },
       "proof": {
         "command": "case-audit",
@@ -1001,7 +1001,7 @@
         "prevalence": "high",
         "interaction": "very-high",
         "implementation": "high",
-        "priority": "P1"
+        "priority": "common"
       },
       "proof": {
         "command": "case-audit",
@@ -1035,7 +1035,7 @@
         "prevalence": "medium",
         "interaction": "high",
         "implementation": "medium",
-        "priority": "P1"
+        "priority": "common"
       },
       "proof": {
         "command": "case-audit",
@@ -1069,7 +1069,7 @@
         "prevalence": "medium",
         "interaction": "medium",
         "implementation": "low",
-        "priority": "P2"
+        "priority": "specialized"
       },
       "proof": {
         "command": "case-audit",
@@ -1100,7 +1100,7 @@
         "prevalence": "low",
         "interaction": "high",
         "implementation": "medium",
-        "priority": "P2"
+        "priority": "specialized"
       },
       "proof": {
         "command": "case-audit",
@@ -1134,7 +1134,7 @@
         "prevalence": "low",
         "interaction": "high",
         "implementation": "medium",
-        "priority": "P2"
+        "priority": "specialized"
       },
       "proof": {
         "command": "case-audit",
@@ -1165,7 +1165,7 @@
         "prevalence": "medium",
         "interaction": "very-high",
         "implementation": "high",
-        "priority": "P1"
+        "priority": "common"
       },
       "proof": {
         "command": "case-audit",
@@ -1195,7 +1195,7 @@
         "prevalence": "medium",
         "interaction": "low",
         "implementation": "medium",
-        "priority": "P1"
+        "priority": "common"
       },
       "proof": {
         "command": "case-audit",
