@@ -1,0 +1,12 @@
+if(NOT DEFINED INPUT_FILE OR NOT EXISTS "${INPUT_FILE}")
+  message(FATAL_ERROR "INPUT_FILE must name the ZCF preset source.")
+endif()
+if(NOT DEFINED TEMPLATE_FILE OR NOT EXISTS "${TEMPLATE_FILE}")
+  message(FATAL_ERROR "TEMPLATE_FILE must name the preset header template.")
+endif()
+if(NOT DEFINED OUTPUT_FILE)
+  message(FATAL_ERROR "OUTPUT_FILE is required.")
+endif()
+
+file(READ "${INPUT_FILE}" CUSTOM_ZCF_PRESET_CONFIG)
+configure_file("${TEMPLATE_FILE}" "${OUTPUT_FILE}" @ONLY)

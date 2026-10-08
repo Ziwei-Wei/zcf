@@ -28,11 +28,11 @@ private:
                                         FormatStyle::LanguageKind Language,
                                         llvm::StringRef BasedOnStyle);
   friend const ExtensionStyle *getActiveExtensionStyleConst();
-  friend void enableWFormatPresetExtensions(FormatStyle::LanguageKind Language);
+  friend void enableZCFPresetExtensions(FormatStyle::LanguageKind Language);
 };
 
 const ExtensionStyle *getActiveExtensionStyleConst();
-void enableWFormatPresetExtensions(FormatStyle::LanguageKind Language);
+void enableZCFPresetExtensions(FormatStyle::LanguageKind Language);
 
 } // namespace clang::format::extensions
 

@@ -15,6 +15,59 @@ from zcf import launcher
 
 
 class LauncherTests(unittest.TestCase):
+    def test_install_skill_is_idempotent_and_refuses_conflicts(self):
+        content = (
+            "---\n"
+            "name: zcf\n"
+            "description: Test skill\n"
+            "---\n"
+            "\n"
+            "# zcf\n"
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            repository = Path(temporary)
+            (repository / ".git").mkdir()
+            destination = (
+                repository
+                / ".github"
+                / "skills"
+                / "zcf"
+                / "SKILL.md"
+            )
+
+            with mock.patch.object(
+                launcher,
+                "_skill_content",
+                return_value=content,
+            ):
+                self.assertEqual(
+                    launcher._install_skill(repository, force=False),
+                    0,
+                )
+                self.assertEqual(destination.read_text(), content)
+                self.assertEqual(
+                    launcher._install_skill(repository, force=False),
+                    0,
+                )
+
+                destination.write_text("user-owned\n", encoding="utf-8")
+                with self.assertRaisesRegex(
+                    RuntimeError,
+                    "Refusing to overwrite",
+                ):
+                    launcher._install_skill(repository, force=False)
+
+                self.assertEqual(
+                    launcher._install_skill(repository, force=True),
+                    0,
+                )
+                self.assertEqual(destination.read_text(), content)
+
+    def test_install_skill_requires_git_repository(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            with self.assertRaisesRegex(RuntimeError, "Not a Git repository"):
+                launcher._install_skill(Path(temporary), force=False)
+
     def test_activate_uses_pipx_prepend_and_reports_existing_formatters(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -174,7 +227,7 @@ class LauncherTests(unittest.TestCase):
             mock.patch.object(
                 sys,
                 "argv",
-                ["clang-format", "-style=WFormat", "sample.cpp"],
+                ["clang-format", "-style=ZCF", "sample.cpp"],
             ),
             mock.patch.object(launcher.os, "execve") as execve,
         ):
@@ -188,12 +241,22 @@ class LauncherTests(unittest.TestCase):
         self.assertEqual(forwarded[0], binary)
         self.assertEqual(
             forwarded[1],
-            ["clang-format", "-style=WFormat", "sample.cpp"],
+            ["clang-format", "-style=ZCF", "sample.cpp"],
         )
         self.assertEqual(
             forwarded[2]["ZCF_INVOKED_AS_CLANG_FORMAT"],
             "1",
         )
+
+    def test_install_skill_argument_parser(self):
+        repository, force = launcher._parse_install_skill_arguments(
+            ["--force", "sample"]
+        )
+        self.assertEqual(repository, Path("sample"))
+        self.assertTrue(force)
+
+        with self.assertRaisesRegex(RuntimeError, "Usage"):
+            launcher._parse_install_skill_arguments(["one", "two"])
 
 
 if __name__ == "__main__":

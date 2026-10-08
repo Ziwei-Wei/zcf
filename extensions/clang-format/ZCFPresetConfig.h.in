@@ -1,0 +1,12 @@
+#ifndef CUSTOM_CLANG_FORMAT_ZCF_PRESET_CONFIG_H
+#define CUSTOM_CLANG_FORMAT_ZCF_PRESET_CONFIG_H
+
+namespace clang::format::extensions {
+
+inline constexpr char ZCFPresetConfiguration[] = R"ZCF(
+@CUSTOM_ZCF_PRESET_CONFIG@
+)ZCF";
+
+} // namespace clang::format::extensions
+
+#endif
