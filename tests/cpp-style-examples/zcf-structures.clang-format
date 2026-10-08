@@ -1,6 +1,7 @@
 ---
-# Closest pure clang-format 20.1.8 approximation of wformat 0.1.6.
-# Residual and partially supported behaviors are cataloged by the style-gap audit.
+# Structural layout, spacing, and post-format extensions of the closest
+# clang-format 20.1.8 approximation.
+# The upstream option prefix is checked against zcf-target.clang-format.
 Language: Cpp
 BasedOnStyle: LLVM
 ColumnLimit: 0
@@ -11,7 +12,7 @@ AccessModifierOffset: -4
 AlignAfterOpenBracket: BlockIndent
 AlignArrayOfStructures: Right
 AlignConsecutiveAssignments:
-  Enabled: true
+  Enabled: false
   AcrossEmptyLines: false
   AcrossComments: true
   AlignCompound: true
@@ -98,8 +99,8 @@ KeepEmptyLines:
   AtEndOfFile: false
   AtStartOfBlock: false
   AtStartOfFile: true
-MacroBlockBegin: '^WFORMAT_BEGIN_GENERATED_NAMESPACE\(.*\)$'
-MacroBlockEnd: '^WFORMAT_END_GENERATED_NAMESPACE\(.*\)$'
+MacroBlockBegin: '^ZCF_BEGIN_GENERATED_NAMESPACE\(.*\)$'
+MacroBlockEnd: '^ZCF_END_GENERATED_NAMESPACE\(.*\)$'
 MaxEmptyLinesToKeep: 1
 NamespaceIndentation: None
 PackConstructorInitializers: Never
@@ -136,18 +137,32 @@ Standard: c++20
 StatementMacros:
   - Q_UNUSED
   - QT_REQUIRE_VERSION
-  - WFORMAT_REQUIRE
-  - WFORMAT_STATEMENT
-  - WFORMAT_TRACE
-  - WFORMAT_MULTI_LINE_EXPR
-  - WFORMAT_MULTI_LINE_VARIADIC_CALL
-  - WFORMAT_EMPTY_MARKER
+  - ZCF_REQUIRE
+  - ZCF_STATEMENT
+  - ZCF_TRACE
+  - ZCF_MULTI_LINE_EXPR
+  - ZCF_MULTI_LINE_VARIADIC_CALL
+  - ZCF_EMPTY_MARKER
 WhitespaceSensitiveMacros:
   - BOOST_PP_STRINGIZE
   - CF_SWIFT_NAME
   - NS_SWIFT_NAME
   - PP_STRINGIZE
   - STRINGIZE
-  - WFORMAT_RAW
+  - ZCF_RAW
 UseTab: Never
+ZCFExtensions:
+  ArgumentIndentedClosingParentheses: true
+  ForceMultilineFunctionSignatures: true
+  ContextSensitiveBracedInitializers: true
+  BlankLineBeforeReturn: true
+  BreakConstructorDestructorSpecifiers: true
+  CompactSingleArgumentCalls: true
+  ExpandNestedAggregateBraces: true
+  BreakRequiresExpressionBraces: true
+  SpaceParameterPackEllipses: true
+  SpaceAnnotationsAndFunctionPointers: true
+  NormalizeIntegerLiteralCase: true
+  BlankLinesAroundControlStatements: true
+  AlignMacrosAcrossDirectives: true
 ...

@@ -227,7 +227,7 @@ class LauncherTests(unittest.TestCase):
             mock.patch.object(
                 sys,
                 "argv",
-                ["clang-format", "-style=WFormat", "sample.cpp"],
+                ["clang-format", "-style=ZCF", "sample.cpp"],
             ),
             mock.patch.object(launcher.os, "execve") as execve,
         ):
@@ -241,7 +241,7 @@ class LauncherTests(unittest.TestCase):
         self.assertEqual(forwarded[0], binary)
         self.assertEqual(
             forwarded[1],
-            ["clang-format", "-style=WFormat", "sample.cpp"],
+            ["clang-format", "-style=ZCF", "sample.cpp"],
         )
         self.assertEqual(
             forwarded[2]["ZCF_INVOKED_AS_CLANG_FORMAT"],

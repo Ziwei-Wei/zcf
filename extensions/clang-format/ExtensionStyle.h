@@ -33,7 +33,7 @@ struct ExtensionStyle {
   bool SeparateSwitchCaseBlocks = false;
   bool ScopeStyleNestedTemplates = false;
 
-  static ExtensionStyle getWFormatPresetStyle() {
+  static ExtensionStyle getZCFPresetStyle() {
     ExtensionStyle Style;
     Style.ArgumentIndentedClosingParentheses = true;
     Style.ForceMultilineFunctionSignatures = true;

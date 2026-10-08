@@ -15,16 +15,16 @@ Set-StrictMode -Version Latest
 
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 if (-not $StyleFile) {
-    $StyleFile = Join-Path $repoRoot 'tests\cpp-style-examples\wformat-structures.clang-format'
+    $StyleFile = Join-Path $repoRoot 'tests\cpp-style-examples\zcf-structures.clang-format'
 }
 if (-not $UpstreamStyleFile) {
-    $UpstreamStyleFile = Join-Path $repoRoot 'tests\cpp-style-examples\wformat-target.clang-format'
+    $UpstreamStyleFile = Join-Path $repoRoot 'tests\cpp-style-examples\zcf-target.clang-format'
 }
 if (-not $CaseDir) {
-    $CaseDir = Join-Path $repoRoot 'tests\wformat-style-gaps\cases'
+    $CaseDir = Join-Path $repoRoot 'tests\zcf-style-contracts\cases'
 }
 if (-not $CanonicalFixture) {
-    $CanonicalFixture = Join-Path $repoRoot 'tests\cpp-style-examples\wformat_supported_style_details.cpp'
+    $CanonicalFixture = Join-Path $repoRoot 'tests\cpp-style-examples\zcf_supported_style_details.cpp'
 }
 if (-not $WorkDir) {
     $WorkDir = Join-Path $repoRoot 'build\structure-format-tests'
@@ -79,20 +79,20 @@ if (Test-Path -LiteralPath $WorkDir) {
 [void](New-Item -ItemType Directory -Path $WorkDir)
 
 $structureStyleLines = @([System.IO.File]::ReadAllLines($StyleFile))
-$extensionIndex = [Array]::IndexOf($structureStyleLines, 'WFormatExtensions:')
+$extensionIndex = [Array]::IndexOf($structureStyleLines, 'ZCFExtensions:')
 if ($extensionIndex -lt 0) {
-    throw 'Structure style does not contain WFormatExtensions.'
+    throw 'Structure style does not contain ZCFExtensions.'
 }
 $upstreamPrefix = ($structureStyleLines[0..($extensionIndex - 1)] -join "`n").TrimEnd()
 $upstreamStyle = [System.IO.File]::ReadAllText($UpstreamStyleFile).
     Replace("`r`n", "`n").
     Replace(
-        '# Closest pure clang-format 20.1.8 approximation of wformat 0.1.6.',
+        '# Native clang-format 20.1.8 baseline for the reviewed ZCF C++ policy.',
         "# Structural layout, spacing, and post-format extensions of the closest`n# clang-format 20.1.8 approximation."
     ).
     Replace(
-        '# Residual and partially supported behaviors are cataloged by the style-gap audit.',
-        '# The upstream option prefix is checked against wformat-target.clang-format.'
+        '# Extension-specific differences are covered by focused contract fixtures.',
+        '# The upstream option prefix is checked against zcf-target.clang-format.'
     ).
     Replace(
         "AlignConsecutiveAssignments:`n  Enabled: true",
@@ -101,15 +101,15 @@ $upstreamStyle = [System.IO.File]::ReadAllText($UpstreamStyleFile).
     Replace("`n...`n", "`n").
     TrimEnd()
 if ($upstreamPrefix -cne $upstreamStyle) {
-    throw 'Structure style upstream options drifted from wformat-target.clang-format.'
+    throw 'Structure style upstream options drifted from zcf-target.clang-format.'
 }
 
 $disabledDump = (& $FormatterExe -style=LLVM -dump-config 2>&1) -join "`n"
 if ($LASTEXITCODE -ne 0) {
     throw "Disabled extension dump-config failed with exit code $LASTEXITCODE."
 }
-if ($disabledDump.Contains('WFormatExtensions:')) {
-    throw 'Disabled dump-config unexpectedly emitted WFormatExtensions.'
+if ($disabledDump.Contains('ZCFExtensions:')) {
+    throw 'Disabled dump-config unexpectedly emitted ZCFExtensions.'
 }
 
 $enabledDump = (
@@ -152,7 +152,7 @@ foreach ($caseId in $caseIds) {
     $targetSuffix = if ($caseId -ceq 'nested-aggregate-brace-expansion') {
         'reviewed.cpp'
     } else {
-        'wformat.cpp'
+        'zcf.cpp'
     }
     $targetPath = Join-Path $CaseDir "$caseId.$targetSuffix"
     $actualPath = Join-Path $WorkDir "$caseId.actual.cpp"
@@ -171,7 +171,7 @@ foreach ($caseId in $caseIds) {
     $firstPass = Get-NormalizedText -Path $actualPath
     $target = Get-NormalizedText -Path $targetPath
     if ($firstPass -cne $target) {
-        throw "$caseId output differs from its checked-in WFormat target."
+        throw "$caseId output differs from its checked-in ZCF target."
     }
 
     & $FormatterExe "-style=file:$StyleFile" -i $actualPath
@@ -205,7 +205,7 @@ foreach ($entry in $optionCases.GetEnumerator()) {
     $targetSuffix = if ($caseId -ceq 'nested-aggregate-brace-expansion') {
         'reviewed.cpp'
     } else {
-        'wformat.cpp'
+        'zcf.cpp'
     }
     $targetPath = Join-Path $CaseDir "$caseId.$targetSuffix"
     Copy-Item -LiteralPath $inputPath -Destination $actualPath
@@ -228,12 +228,12 @@ $multiSectionInput = Join-Path $WorkDir 'multi-section.cpp'
 ---
 Language: Cpp
 BasedOnStyle: LLVM
-WFormatExtensions:
+ZCFExtensions:
   NormalizeIntegerLiteralCase: true
 ---
 Language: CSharp
 BasedOnStyle: Microsoft
-WFormatExtensions:
+ZCFExtensions:
   NormalizeIntegerLiteralCase: false
 '@,
     [System.Text.UTF8Encoding]::new($false)
@@ -316,7 +316,7 @@ $inheritanceInput = Join-Path $WorkDir 'ordinary-inheritance.cpp'
     [System.Text.UTF8Encoding]::new($false)
 )
 $inheritanceStyle =
-    '{BasedOnStyle: LLVM, WFormatExtensions: {SpaceParameterPackEllipses: true}}'
+    '{BasedOnStyle: LLVM, ZCFExtensions: {SpaceParameterPackEllipses: true}}'
 & $FormatterExe "-style=$inheritanceStyle" -i $inheritanceInput
 if ($LASTEXITCODE -ne 0) {
     throw "Ordinary inheritance isolation failed with exit code $LASTEXITCODE."

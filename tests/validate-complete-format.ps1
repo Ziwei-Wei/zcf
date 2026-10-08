@@ -15,16 +15,16 @@ Set-StrictMode -Version Latest
 
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 if (-not $StyleFile) {
-    $StyleFile = Join-Path $repoRoot 'tests\cpp-style-examples\wformat-complete.clang-format'
+    $StyleFile = Join-Path $repoRoot 'tests\cpp-style-examples\zcf-complete.clang-format'
 }
 if (-not $UpstreamStyleFile) {
-    $UpstreamStyleFile = Join-Path $repoRoot 'tests\cpp-style-examples\wformat-target.clang-format'
+    $UpstreamStyleFile = Join-Path $repoRoot 'tests\cpp-style-examples\zcf-target.clang-format'
 }
 if (-not $CaseDir) {
-    $CaseDir = Join-Path $repoRoot 'tests\wformat-style-gaps\cases'
+    $CaseDir = Join-Path $repoRoot 'tests\zcf-style-contracts\cases'
 }
 if (-not $CanonicalFixture) {
-    $CanonicalFixture = Join-Path $repoRoot 'tests\cpp-style-examples\wformat_supported_style_details.cpp'
+    $CanonicalFixture = Join-Path $repoRoot 'tests\cpp-style-examples\zcf_supported_style_details.cpp'
 }
 if (-not $WorkDir) {
     $WorkDir = Join-Path $repoRoot 'build\complete-format-tests'
@@ -74,20 +74,20 @@ if (Test-Path -LiteralPath $WorkDir) {
 [void](New-Item -ItemType Directory -Path $WorkDir)
 
 $completeStyleLines = @([System.IO.File]::ReadAllLines($StyleFile))
-$extensionIndex = [Array]::IndexOf($completeStyleLines, 'WFormatExtensions:')
+$extensionIndex = [Array]::IndexOf($completeStyleLines, 'ZCFExtensions:')
 if ($extensionIndex -lt 0) {
-    throw 'Complete style does not contain WFormatExtensions.'
+    throw 'Complete style does not contain ZCFExtensions.'
 }
 $upstreamPrefix = ($completeStyleLines[0..($extensionIndex - 1)] -join "`n").TrimEnd()
 $upstreamStyle = [System.IO.File]::ReadAllText($UpstreamStyleFile).
     Replace("`r`n", "`n").
     Replace(
-        '# Closest pure clang-format 20.1.8 approximation of wformat 0.1.6.',
+        '# Native clang-format 20.1.8 baseline for the reviewed ZCF C++ policy.',
         "# Complete reviewed extension policy for the closest clang-format 20.1.8`n# approximation."
     ).
     Replace(
-        '# Residual and partially supported behaviors are cataloged by the style-gap audit.',
-        '# The upstream option prefix is checked against wformat-target.clang-format.'
+        '# Extension-specific differences are covered by focused contract fixtures.',
+        '# The upstream option prefix is checked against zcf-target.clang-format.'
     ).
     Replace(
         "AlignConsecutiveAssignments:`n  Enabled: true",
@@ -96,15 +96,15 @@ $upstreamStyle = [System.IO.File]::ReadAllText($UpstreamStyleFile).
     Replace("`n...`n", "`n").
     TrimEnd()
 if ($upstreamPrefix -cne $upstreamStyle) {
-    throw 'Complete style upstream options drifted from wformat-target.clang-format.'
+    throw 'Complete style upstream options drifted from zcf-target.clang-format.'
 }
 
 $disabledDump = (& $FormatterExe -style=LLVM -dump-config 2>&1) -join "`n"
 if ($LASTEXITCODE -ne 0) {
     throw "Disabled extension dump-config failed with exit code $LASTEXITCODE."
 }
-if ($disabledDump.Contains('WFormatExtensions:')) {
-    throw 'Disabled dump-config unexpectedly emitted WFormatExtensions.'
+if ($disabledDump.Contains('ZCFExtensions:')) {
+    throw 'Disabled dump-config unexpectedly emitted ZCFExtensions.'
 }
 
 $enabledDump = (
@@ -144,7 +144,7 @@ foreach ($caseId in $caseIds) {
     $targetSuffix = if ($caseId -ceq 'compound-requirement-arrow-spacing') {
         'reviewed.cpp'
     } else {
-        'wformat.cpp'
+        'zcf.cpp'
     }
     $targetPath = Join-Path $CaseDir "$caseId.$targetSuffix"
     $actualPath = Join-Path $WorkDir "$caseId.actual.cpp"
@@ -198,54 +198,54 @@ foreach ($fragment in @(
 Write-Host 'PASS native LLVM arrow spacing'
 
 $presetStyles = [ordered]@{
-    'BasedOnStyle' = '{BasedOnStyle: WFormat}'
-    'NamedStyle' = 'WFormat'
-    'StyleFile' = "file:$(Join-Path $repoRoot 'tests\cpp-style-examples\wformat.clang-format')"
+    'BasedOnStyle' = '{BasedOnStyle: ZCF}'
+    'NamedStyle' = 'ZCF'
+    'StyleFile' = "file:$(Join-Path $repoRoot 'tests\cpp-style-examples\zcf.clang-format')"
 }
 $progressiveInput =
-    Join-Path $repoRoot 'tests\cpp-style-examples\wformat-preset-progressive-calls.input.cpp'
+    Join-Path $repoRoot 'tests\cpp-style-examples\zcf-preset-progressive-calls.input.cpp'
 $progressiveExpected =
-    Join-Path $repoRoot 'tests\cpp-style-examples\wformat-preset-progressive-calls.expected.cpp'
+    Join-Path $repoRoot 'tests\cpp-style-examples\zcf-preset-progressive-calls.expected.cpp'
 $binaryInput =
-    Join-Path $repoRoot 'tests\cpp-style-examples\wformat-preset-binary-operations.input.cpp'
+    Join-Path $repoRoot 'tests\cpp-style-examples\zcf-preset-binary-operations.input.cpp'
 $binaryExpected =
-    Join-Path $repoRoot 'tests\cpp-style-examples\wformat-preset-binary-operations.expected.cpp'
+    Join-Path $repoRoot 'tests\cpp-style-examples\zcf-preset-binary-operations.expected.cpp'
 $arithmeticInput =
-    Join-Path $repoRoot 'tests\cpp-style-examples\wformat-preset-progressive-arithmetic.input.cpp'
+    Join-Path $repoRoot 'tests\cpp-style-examples\zcf-preset-progressive-arithmetic.input.cpp'
 $arithmeticExpected =
-    Join-Path $repoRoot 'tests\cpp-style-examples\wformat-preset-progressive-arithmetic.expected.cpp'
+    Join-Path $repoRoot 'tests\cpp-style-examples\zcf-preset-progressive-arithmetic.expected.cpp'
 $compactOperandsInput =
-    Join-Path $repoRoot 'tests\cpp-style-examples\wformat-preset-compact-two-operands.input.cpp'
+    Join-Path $repoRoot 'tests\cpp-style-examples\zcf-preset-compact-two-operands.input.cpp'
 $compactOperandsExpected =
-    Join-Path $repoRoot 'tests\cpp-style-examples\wformat-preset-compact-two-operands.expected.cpp'
+    Join-Path $repoRoot 'tests\cpp-style-examples\zcf-preset-compact-two-operands.expected.cpp'
 $matrixInput =
-    Join-Path $repoRoot 'tests\cpp-style-examples\wformat-preset-matrix-alignment.input.cpp'
+    Join-Path $repoRoot 'tests\cpp-style-examples\zcf-preset-matrix-alignment.input.cpp'
 $matrixExpected =
-    Join-Path $repoRoot 'tests\cpp-style-examples\wformat-preset-matrix-alignment.expected.cpp'
+    Join-Path $repoRoot 'tests\cpp-style-examples\zcf-preset-matrix-alignment.expected.cpp'
 $presetRuleContracts = @(
     @{
         Option = 'BodyDrivenLambdaExpansion'
         Case = 'body-driven-lambda-expansion'
         Input = Join-Path $CaseDir 'body-driven-lambda-expansion.input.cpp'
-        Expected = Join-Path $CaseDir 'body-driven-lambda-expansion.wformat.cpp'
+        Expected = Join-Path $CaseDir 'body-driven-lambda-expansion.zcf.cpp'
     },
     @{
         Option = 'VerticalTernaryExpressions'
         Case = 'vertical-ternary-expressions'
         Input = Join-Path $CaseDir 'vertical-ternary-expressions.input.cpp'
-        Expected = Join-Path $CaseDir 'vertical-ternary-expressions.wformat.cpp'
+        Expected = Join-Path $CaseDir 'vertical-ternary-expressions.zcf.cpp'
     },
     @{
         Option = 'SeparateSwitchCaseBlocks'
         Case = 'switch-case-block-separation'
         Input = Join-Path $CaseDir 'switch-case-block-separation.input.cpp'
-        Expected = Join-Path $CaseDir 'switch-case-block-separation.wformat.cpp'
+        Expected = Join-Path $CaseDir 'switch-case-block-separation.zcf.cpp'
     },
     @{
         Option = 'ScopeStyleNestedTemplates'
         Case = 'scope-style-nested-templates'
         Input = Join-Path $CaseDir 'scope-style-nested-templates.input.cpp'
-        Expected = Join-Path $CaseDir 'scope-style-nested-templates.wformat.cpp'
+        Expected = Join-Path $CaseDir 'scope-style-nested-templates.zcf.cpp'
     }
 )
 foreach ($preset in $presetStyles.GetEnumerator()) {
@@ -349,29 +349,29 @@ foreach ($preset in $presetStyles.GetEnumerator()) {
 
 $presetCanonical = Join-Path $WorkDir 'preset-canonical.cpp'
 Copy-Item -LiteralPath $CanonicalFixture -Destination $presetCanonical
-& $FormatterExe -style=WFormat -i $presetCanonical
+& $FormatterExe -style=ZCF -i $presetCanonical
 if ($LASTEXITCODE -ne 0) {
-    throw "WFormat preset canonical formatting failed with exit code $LASTEXITCODE."
+    throw "ZCF preset canonical formatting failed with exit code $LASTEXITCODE."
 }
 $presetCanonicalFirstHash =
     (Get-FileHash -Algorithm SHA256 -LiteralPath $presetCanonical).Hash
-& $FormatterExe -style=WFormat -i $presetCanonical
+& $FormatterExe -style=ZCF -i $presetCanonical
 if ($LASTEXITCODE -ne 0) {
-    throw "WFormat preset canonical second pass failed with exit code $LASTEXITCODE."
+    throw "ZCF preset canonical second pass failed with exit code $LASTEXITCODE."
 }
 $presetCanonicalSecondHash =
     (Get-FileHash -Algorithm SHA256 -LiteralPath $presetCanonical).Hash
 if ($presetCanonicalFirstHash -cne $presetCanonicalSecondHash) {
-    throw 'WFormat preset canonical output is not byte-identical across two passes.'
+    throw 'ZCF preset canonical output is not byte-identical across two passes.'
 }
-Write-Host 'PASS WFormat preset canonical idempotence'
+Write-Host 'PASS ZCF preset canonical idempotence'
 
 $presetDump = (
-    & $FormatterExe '-style={BasedOnStyle: WFormat}' -dump-config `
+    & $FormatterExe '-style={BasedOnStyle: ZCF}' -dump-config `
         (Join-Path $CaseDir 'blank-line-before-return.input.cpp') 2>&1
 ) -join "`n"
 if ($LASTEXITCODE -ne 0) {
-    throw "WFormat preset dump-config failed with exit code $LASTEXITCODE."
+    throw "ZCF preset dump-config failed with exit code $LASTEXITCODE."
 }
 $enabledPresetOptions = @(
     'ArgumentIndentedClosingParentheses',
@@ -403,7 +403,7 @@ $enabledPresetOptions = @(
 )
 foreach ($option in $enabledPresetOptions) {
     if (-not $presetDump.Contains("${option}: true")) {
-        throw "WFormat preset did not enable $option."
+        throw "ZCF preset did not enable $option."
     }
 }
 foreach ($setting in @(
@@ -415,14 +415,14 @@ foreach ($setting in @(
     'PenaltyBreakAssignment: 1000'
 )) {
     if (-not $presetDump.Contains($setting)) {
-        throw "WFormat preset is missing '$setting'."
+        throw "ZCF preset is missing '$setting'."
     }
 }
 if ($presetDump -notmatch
     '(?s)AlignConsecutiveAssignments:.*?Enabled:\s+false') {
-    throw 'WFormat preset did not disable consecutive assignment alignment.'
+    throw 'ZCF preset did not disable consecutive assignment alignment.'
 }
-Write-Host 'PASS WFormat preset policy settings'
+Write-Host 'PASS ZCF preset policy settings'
 
 $presetDumpStyle = Join-Path $WorkDir 'preset-dump.clang-format'
 $presetDumpActual = Join-Path $WorkDir 'preset-dump-progressive-calls.cpp'
@@ -434,13 +434,13 @@ $presetDumpActual = Join-Path $WorkDir 'preset-dump-progressive-calls.cpp'
 Copy-Item -LiteralPath $progressiveInput -Destination $presetDumpActual
 & $FormatterExe "-style=file:$presetDumpStyle" -i $presetDumpActual
 if ($LASTEXITCODE -ne 0) {
-    throw "WFormat dump-config round trip failed with exit code $LASTEXITCODE."
+    throw "ZCF dump-config round trip failed with exit code $LASTEXITCODE."
 }
 if ((Get-NormalizedText -Path $presetDumpActual) -cne
     (Get-NormalizedText -Path $progressiveExpected)) {
-    throw 'WFormat dump-config lost progressive-call behavior.'
+    throw 'ZCF dump-config lost progressive-call behavior.'
 }
-Write-Host 'PASS WFormat dump-config round trip'
+Write-Host 'PASS ZCF dump-config round trip'
 
 $presetOptionContracts = @(
     @{
@@ -488,7 +488,7 @@ const auto layered = sampleIndex
 $layeredCompactionStyle = @'
 {BasedOnStyle: LLVM, ColumnLimit: 60, BreakBeforeBinaryOperators: All,
  AlignOperands: DontAlign,
- WFormatExtensions: {ProgressiveArithmeticExpansion: true,
+ ZCFExtensions: {ProgressiveArithmeticExpansion: true,
                     CompactTwoOperandExpressions: true}}
 '@.Replace("`r", '').Replace("`n", ' ')
 & $FormatterExe "-style=$layeredCompactionStyle" -i $layeredCompactionInput
@@ -512,7 +512,7 @@ const auto delta = measuredValueWithAVeryLongName - targetValueWithAVeryLongName
     [System.Text.UTF8Encoding]::new($false)
 )
 & $FormatterExe `
-    '-style={BasedOnStyle: LLVM, ColumnLimit: 40, IndentWidth: 4, ContinuationIndentWidth: 4, WFormatExtensions: {ProgressiveArithmeticExpansion: true, CompactTwoOperandExpressions: true}}' `
+    '-style={BasedOnStyle: LLVM, ColumnLimit: 40, IndentWidth: 4, ContinuationIndentWidth: 4, ZCFExtensions: {ProgressiveArithmeticExpansion: true, CompactTwoOperandExpressions: true}}' `
     -i $longTwoOperandInput
 if ($LASTEXITCODE -ne 0) {
     throw "Long two-operand formatting failed with exit code $LASTEXITCODE."
@@ -534,7 +534,7 @@ const int total = baseValue + shippingFee + serviceCharge + taxAmount;
     [System.Text.UTF8Encoding]::new($false)
 )
 & $FormatterExe `
-    '-style={BasedOnStyle: WFormat, ColumnLimit: 60}' `
+    '-style={BasedOnStyle: ZCF, ColumnLimit: 60}' `
     -i $assignmentBreakInput
 if ($LASTEXITCODE -ne 0) {
     throw "Expanded assignment formatting failed with exit code $LASTEXITCODE."
@@ -562,7 +562,7 @@ const auto total = firstValue + /* keep */ secondValue + thirdValue;
     [System.Text.UTF8Encoding]::new($false)
 )
 & $FormatterExe `
-    '-style={BasedOnStyle: LLVM, ColumnLimit: 40, WFormatExtensions: {ProgressiveArithmeticExpansion: true}}' `
+    '-style={BasedOnStyle: LLVM, ColumnLimit: 40, ZCFExtensions: {ProgressiveArithmeticExpansion: true}}' `
     -i $commentArithmeticInput
 if ($LASTEXITCODE -ne 0) {
     throw "Comment-bearing arithmetic safety failed with exit code $LASTEXITCODE."
@@ -581,24 +581,24 @@ $overrideInput = Join-Path $WorkDir 'preset-override.cpp'
     [System.Text.UTF8Encoding]::new($false)
 )
 $overrideStyle =
-    '{BasedOnStyle: WFormat, WFormatExtensions: {BlankLineBeforeReturn: false}}'
+    '{BasedOnStyle: ZCF, ZCFExtensions: {BlankLineBeforeReturn: false}}'
 & $FormatterExe "-style=$overrideStyle" -i $overrideInput
 if ($LASTEXITCODE -ne 0) {
-    throw "WFormat option override failed with exit code $LASTEXITCODE."
+    throw "ZCF option override failed with exit code $LASTEXITCODE."
 }
 if ((Get-NormalizedText -Path $overrideInput).Contains(
     "work();`n`n    return 1;"
 )) {
-    throw 'WFormat option override did not disable return separation.'
+    throw 'ZCF option override did not disable return separation.'
 }
-Write-Host 'PASS WFormat preset option override'
+Write-Host 'PASS ZCF preset option override'
 
 $presetResetStyle = Join-Path $WorkDir 'preset-language-reset.clang-format'
 [System.IO.File]::WriteAllText(
     $presetResetStyle,
     @'
 ---
-BasedOnStyle: WFormat
+BasedOnStyle: ZCF
 ---
 Language: Cpp
 BasedOnStyle: LLVM
@@ -610,12 +610,12 @@ $presetResetDump = (
         (Join-Path $CaseDir 'blank-line-before-return.input.cpp') 2>&1
 ) -join "`n"
 if ($LASTEXITCODE -ne 0) {
-    throw "WFormat language reset failed with exit code $LASTEXITCODE."
+    throw "ZCF language reset failed with exit code $LASTEXITCODE."
 }
-if ($presetResetDump.Contains('WFormatExtensions:')) {
-    throw 'BasedOnStyle: LLVM did not reset inherited WFormat extensions.'
+if ($presetResetDump.Contains('ZCFExtensions:')) {
+    throw 'BasedOnStyle: LLVM did not reset inherited ZCF extensions.'
 }
-Write-Host 'PASS WFormat preset language reset'
+Write-Host 'PASS ZCF preset language reset'
 
 $nonCppSource = @'
 class Sample
@@ -644,21 +644,21 @@ if ($LASTEXITCODE -ne 0) {
     throw "Non-C++ baseline formatting failed with exit code $LASTEXITCODE."
 }
 $nonCppExtensionStyle =
-    '{BasedOnStyle: Microsoft, WFormatExtensions: {BlankLineBeforeReturn: true}}'
+    '{BasedOnStyle: Microsoft, ZCFExtensions: {BlankLineBeforeReturn: true}}'
 & $FormatterExe "-style=$nonCppExtensionStyle" -i $nonCppExtension
 if ($LASTEXITCODE -ne 0) {
     throw "Non-C++ extension formatting failed with exit code $LASTEXITCODE."
 }
 if ((Get-NormalizedText -Path $nonCppExtension) -cne
     (Get-NormalizedText -Path $nonCppBaseline)) {
-    throw 'WFormat extensions changed non-C++ formatting.'
+    throw 'ZCF extensions changed non-C++ formatting.'
 }
 Write-Host 'PASS non-C++ extension isolation'
 
-$nonCppWFormat = Join-Path $WorkDir 'non-cpp-wformat.cs'
+$nonCppZCF = Join-Path $WorkDir 'non-cpp-zcf.cs'
 $nonCppLLVM = Join-Path $WorkDir 'non-cpp-llvm.cs'
 [System.IO.File]::WriteAllText(
-    $nonCppWFormat,
+    $nonCppZCF,
     $nonCppSource,
     [System.Text.UTF8Encoding]::new($false)
 )
@@ -667,19 +667,19 @@ $nonCppLLVM = Join-Path $WorkDir 'non-cpp-llvm.cs'
     $nonCppSource,
     [System.Text.UTF8Encoding]::new($false)
 )
-& $FormatterExe -style=WFormat -i $nonCppWFormat
+& $FormatterExe -style=ZCF -i $nonCppZCF
 if ($LASTEXITCODE -ne 0) {
-    throw "Non-C++ WFormat fallback failed with exit code $LASTEXITCODE."
+    throw "Non-C++ ZCF fallback failed with exit code $LASTEXITCODE."
 }
 & $FormatterExe -style=LLVM -i $nonCppLLVM
 if ($LASTEXITCODE -ne 0) {
     throw "Non-C++ LLVM formatting failed with exit code $LASTEXITCODE."
 }
-if ((Get-NormalizedText -Path $nonCppWFormat) -cne
+if ((Get-NormalizedText -Path $nonCppZCF) -cne
     (Get-NormalizedText -Path $nonCppLLVM)) {
-    throw 'Non-C++ WFormat did not fall back to LLVM with extensions disabled.'
+    throw 'Non-C++ ZCF did not fall back to LLVM with extensions disabled.'
 }
-Write-Host 'PASS non-C++ WFormat fallback'
+Write-Host 'PASS non-C++ ZCF fallback'
 
 foreach ($entry in $optionCases.GetEnumerator()) {
     $option = [string]$entry.Key
@@ -707,7 +707,7 @@ foreach ($entry in $optionCases.GetEnumerator()) {
             throw "$option isolated formatting failed with exit code $LASTEXITCODE."
         }
         if ((Get-NormalizedText -Path $enabledActual) -cne
-            (Get-NormalizedText -Path (Join-Path $CaseDir "$caseId.wformat.cpp"))) {
+            (Get-NormalizedText -Path (Join-Path $CaseDir "$caseId.zcf.cpp"))) {
             throw "$option does not independently reproduce $caseId."
         }
     }
@@ -723,7 +723,7 @@ foreach ($entry in $optionCases.GetEnumerator()) {
 
     $actualPath = Join-Path $WorkDir "$option.disabled.cpp"
     $inputPath = Join-Path $CaseDir "$caseId.input.cpp"
-    $targetPath = Join-Path $CaseDir "$caseId.wformat.cpp"
+    $targetPath = Join-Path $CaseDir "$caseId.zcf.cpp"
     Copy-Item -LiteralPath $inputPath -Destination $actualPath
     & $FormatterExe "-style=file:$optionStyle" -i $actualPath
     if ($LASTEXITCODE -ne 0) {
@@ -744,12 +744,12 @@ $multiSectionInput = Join-Path $WorkDir 'multi-section.cpp'
 ---
 Language: Cpp
 BasedOnStyle: LLVM
-WFormatExtensions:
+ZCFExtensions:
   SpaceAfterParenthesizedSpecifiers: true
 ---
 Language: CSharp
 BasedOnStyle: Microsoft
-WFormatExtensions:
+ZCFExtensions:
   SpaceAfterParenthesizedSpecifiers: false
 '@,
     [System.Text.UTF8Encoding]::new($false)
@@ -835,7 +835,7 @@ $inheritanceInput = Join-Path $WorkDir 'ordinary-inheritance.cpp'
     [System.Text.UTF8Encoding]::new($false)
 )
 $inheritanceStyle =
-    '{BasedOnStyle: LLVM, WFormatExtensions: {SpaceParameterPackEllipses: true}}'
+    '{BasedOnStyle: LLVM, ZCFExtensions: {SpaceParameterPackEllipses: true}}'
 & $FormatterExe "-style=$inheritanceStyle" -i $inheritanceInput
 if ($LASTEXITCODE -ne 0) {
     throw "Ordinary inheritance isolation failed with exit code $LASTEXITCODE."

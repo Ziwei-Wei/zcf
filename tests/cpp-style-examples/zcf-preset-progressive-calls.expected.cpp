@@ -18,7 +18,7 @@ run()
             ),
         final_value
         );
-    WFORMAT_CALL(
+    ZCF_CALL(
         short_value,
         nested_function(first_value_with_a_very_long_name, second_value_with_a_very_long_name),
         macro_final_value_with_a_very_long_name

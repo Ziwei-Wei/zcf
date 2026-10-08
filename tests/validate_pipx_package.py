@@ -203,12 +203,12 @@ def main() -> int:
         source = work_dir / "sample.cpp"
         source.write_text("int main(){return 0;}\n", encoding="utf-8")
         formatted = run(
-            [str(clang_format), "-style=WFormat", str(source)],
+            [str(clang_format), "-style=ZCF", str(source)],
             environment=environment,
         ).stdout
         if "int\nmain()" not in formatted.replace("\r\n", "\n"):
             raise RuntimeError(
-                f"pipx clang-format did not apply WFormat:\n{formatted}"
+                f"pipx clang-format did not apply ZCF:\n{formatted}"
             )
 
         run(

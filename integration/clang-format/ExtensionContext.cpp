@@ -30,9 +30,9 @@ const ExtensionStyle *getActiveExtensionStyleConst() {
   return ActiveContext ? ActiveContext->SelectedStyle : nullptr;
 }
 
-void enableWFormatPresetExtensions(FormatStyle::LanguageKind Language) {
+void enableZCFPresetExtensions(FormatStyle::LanguageKind Language) {
   if (ActiveContext)
-    ActiveContext->Styles[Language] = ExtensionStyle::getWFormatPresetStyle();
+    ActiveContext->Styles[Language] = ExtensionStyle::getZCFPresetStyle();
 }
 
 void mapExtensionConfiguration(llvm::yaml::IO &IO,
@@ -44,7 +44,7 @@ void mapExtensionConfiguration(llvm::yaml::IO &IO,
   ExtensionStyle *Style = ActiveContext->SelectedStyle;
   if (!IO.outputting()) {
     if (Language == FormatStyle::LK_None &&
-        BasedOnStyle.equals_insensitive("wformat")) {
+        BasedOnStyle.equals_insensitive("zcf")) {
       ActiveContext->Styles.clear();
     }
     auto [It, Inserted] = ActiveContext->Styles.try_emplace(Language);
@@ -53,8 +53,8 @@ void mapExtensionConfiguration(llvm::yaml::IO &IO,
       if (Default != ActiveContext->Styles.end())
         It->second = Default->second;
     }
-    if (BasedOnStyle.equals_insensitive("wformat")) {
-      It->second = ExtensionStyle::getWFormatPresetStyle();
+    if (BasedOnStyle.equals_insensitive("zcf")) {
+      It->second = ExtensionStyle::getZCFPresetStyle();
     } else if (!BasedOnStyle.empty() &&
                !BasedOnStyle.equals_insensitive("inheritparentconfig")) {
       It->second = ExtensionStyle();
@@ -63,7 +63,7 @@ void mapExtensionConfiguration(llvm::yaml::IO &IO,
   } else if (!Style->anyEnabled()) {
     return;
   }
-  IO.mapOptional("WFormatExtensions", *Style);
+  IO.mapOptional("ZCFExtensions", *Style);
 }
 
 } // namespace clang::format::extensions

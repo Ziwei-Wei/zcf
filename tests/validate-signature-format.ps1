@@ -15,16 +15,16 @@ Set-StrictMode -Version Latest
 
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 if (-not $StyleFile) {
-    $StyleFile = Join-Path $repoRoot 'tests\cpp-style-examples\wformat-signatures.clang-format'
+    $StyleFile = Join-Path $repoRoot 'tests\cpp-style-examples\zcf-signatures.clang-format'
 }
 if (-not $UpstreamStyleFile) {
-    $UpstreamStyleFile = Join-Path $repoRoot 'tests\cpp-style-examples\wformat-target.clang-format'
+    $UpstreamStyleFile = Join-Path $repoRoot 'tests\cpp-style-examples\zcf-target.clang-format'
 }
 if (-not $CaseDir) {
-    $CaseDir = Join-Path $repoRoot 'tests\wformat-style-gaps\cases'
+    $CaseDir = Join-Path $repoRoot 'tests\zcf-style-contracts\cases'
 }
 if (-not $CanonicalFixture) {
-    $CanonicalFixture = Join-Path $repoRoot 'tests\cpp-style-examples\wformat_supported_style_details.cpp'
+    $CanonicalFixture = Join-Path $repoRoot 'tests\cpp-style-examples\zcf_supported_style_details.cpp'
 }
 if (-not $WorkDir) {
     $WorkDir = Join-Path $repoRoot 'build\signature-format-tests'
@@ -69,33 +69,33 @@ if (Test-Path -LiteralPath $WorkDir) {
 [void](New-Item -ItemType Directory -Path $WorkDir)
 
 $signatureStyleLines = @([System.IO.File]::ReadAllLines($StyleFile))
-$extensionIndex = [Array]::IndexOf($signatureStyleLines, 'WFormatExtensions:')
+$extensionIndex = [Array]::IndexOf($signatureStyleLines, 'ZCFExtensions:')
 if ($extensionIndex -lt 0) {
-    throw 'Signature style does not contain WFormatExtensions.'
+    throw 'Signature style does not contain ZCFExtensions.'
 }
 $upstreamPrefix = ($signatureStyleLines[0..($extensionIndex - 1)] -join "`n").TrimEnd()
 $upstreamStyle = [System.IO.File]::ReadAllText($UpstreamStyleFile).
     Replace("`r`n", "`n").
     Replace(
-        '# Closest pure clang-format 20.1.8 approximation of wformat 0.1.6.',
+        '# Native clang-format 20.1.8 baseline for the reviewed ZCF C++ policy.',
         "# Signature, initializer, and return extensions of the closest clang-format`n# 20.1.8 approximation."
     ).
     Replace(
-        '# Residual and partially supported behaviors are cataloged by the style-gap audit.',
-        '# The upstream option prefix is checked against wformat-target.clang-format.'
+        '# Extension-specific differences are covered by focused contract fixtures.',
+        '# The upstream option prefix is checked against zcf-target.clang-format.'
     ).
     Replace("`n...`n", "`n").
     TrimEnd()
 if ($upstreamPrefix -cne $upstreamStyle) {
-    throw 'Signature style upstream options drifted from wformat-target.clang-format.'
+    throw 'Signature style upstream options drifted from zcf-target.clang-format.'
 }
 
 $disabledDump = (& $FormatterExe -style=LLVM -dump-config 2>&1) -join "`n"
 if ($LASTEXITCODE -ne 0) {
     throw "Disabled extension dump-config failed with exit code $LASTEXITCODE."
 }
-if ($disabledDump.Contains('WFormatExtensions:')) {
-    throw 'Disabled dump-config unexpectedly emitted WFormatExtensions.'
+if ($disabledDump.Contains('ZCFExtensions:')) {
+    throw 'Disabled dump-config unexpectedly emitted ZCFExtensions.'
 }
 
 $enabledDump = (
@@ -126,7 +126,7 @@ function Get-NormalizedText {
 
 foreach ($caseId in $caseIds) {
     $inputPath = Join-Path $CaseDir "$caseId.input.cpp"
-    $targetPath = Join-Path $CaseDir "$caseId.wformat.cpp"
+    $targetPath = Join-Path $CaseDir "$caseId.zcf.cpp"
     $actualPath = Join-Path $WorkDir "$caseId.actual.cpp"
     foreach ($requiredFile in @($inputPath, $targetPath)) {
         if (-not (Test-Path -LiteralPath $requiredFile -PathType Leaf)) {
@@ -174,7 +174,7 @@ foreach ($entry in $optionCases.GetEnumerator()) {
 
     $actualPath = Join-Path $WorkDir "$option.disabled.cpp"
     $inputPath = Join-Path $CaseDir "$caseId.input.cpp"
-    $targetPath = Join-Path $CaseDir "$caseId.wformat.cpp"
+    $targetPath = Join-Path $CaseDir "$caseId.zcf.cpp"
     Copy-Item -LiteralPath $inputPath -Destination $actualPath
     & $FormatterExe "-style=file:$optionStyle" -i $actualPath
     if ($LASTEXITCODE -ne 0) {
@@ -195,12 +195,12 @@ $multiSectionInput = Join-Path $WorkDir 'multi-section.cpp'
 ---
 Language: Cpp
 BasedOnStyle: LLVM
-WFormatExtensions:
+ZCFExtensions:
   BlankLineBeforeReturn: true
 ---
 Language: CSharp
 BasedOnStyle: Microsoft
-WFormatExtensions:
+ZCFExtensions:
   BlankLineBeforeReturn: false
 '@,
     [System.Text.UTF8Encoding]::new($false)

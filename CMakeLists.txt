@@ -72,17 +72,17 @@ set(CUSTOM_CPP_STYLE_EXAMPLE_SOURCE_DIR
   "Directory containing the canonical C++ fixture used by the format-cpp-style-files target.")
 
 set(CUSTOM_CPP_SIGNATURE_STYLE_FILE
-  "${CMAKE_CURRENT_SOURCE_DIR}/tests/cpp-style-examples/wformat-signatures.clang-format"
+  "${CMAKE_CURRENT_SOURCE_DIR}/tests/cpp-style-examples/zcf-signatures.clang-format"
   CACHE FILEPATH
   "Signature, initializer, and return target style file.")
 
 set(CUSTOM_CPP_STRUCTURE_STYLE_FILE
-  "${CMAKE_CURRENT_SOURCE_DIR}/tests/cpp-style-examples/wformat-structures.clang-format"
+  "${CMAKE_CURRENT_SOURCE_DIR}/tests/cpp-style-examples/zcf-structures.clang-format"
   CACHE FILEPATH
   "Structural layout, spacing, and post-format target style file.")
 
 set(CUSTOM_CPP_COMPLETE_STYLE_FILE
-  "${CMAKE_CURRENT_SOURCE_DIR}/tests/cpp-style-examples/wformat-complete.clang-format"
+  "${CMAKE_CURRENT_SOURCE_DIR}/tests/cpp-style-examples/zcf-complete.clang-format"
   CACHE FILEPATH
   "Complete reviewed C++ target style file.")
 
@@ -126,30 +126,30 @@ if(NOT _overlay_result EQUAL 0)
     "${_overlay_output}${_overlay_error}")
 endif()
 
-set(_wformat_preset_source
-  "${CMAKE_CURRENT_SOURCE_DIR}/tests/cpp-style-examples/wformat-target.clang-format")
-set(_wformat_preset_template
-  "${CUSTOM_CLANG_FORMAT_EXTENSION_SOURCE_DIR}/WFormatPresetConfig.h.in")
-set(_wformat_preset_include_dir "${CMAKE_BINARY_DIR}/generated")
-set(_wformat_preset_header
-  "${_wformat_preset_include_dir}/WFormatPresetConfig.h")
-file(MAKE_DIRECTORY "${_wformat_preset_include_dir}")
-file(READ "${_wformat_preset_source}" CUSTOM_WFORMAT_PRESET_CONFIG)
+set(_zcf_preset_source
+  "${CMAKE_CURRENT_SOURCE_DIR}/tests/cpp-style-examples/zcf-target.clang-format")
+set(_zcf_preset_template
+  "${CUSTOM_CLANG_FORMAT_EXTENSION_SOURCE_DIR}/ZCFPresetConfig.h.in")
+set(_zcf_preset_include_dir "${CMAKE_BINARY_DIR}/generated")
+set(_zcf_preset_header
+  "${_zcf_preset_include_dir}/ZCFPresetConfig.h")
+file(MAKE_DIRECTORY "${_zcf_preset_include_dir}")
+file(READ "${_zcf_preset_source}" CUSTOM_ZCF_PRESET_CONFIG)
 configure_file(
-  "${_wformat_preset_template}"
-  "${_wformat_preset_header}"
+  "${_zcf_preset_template}"
+  "${_zcf_preset_header}"
   @ONLY)
-add_custom_target(generate-wformat-preset
+add_custom_target(generate-zcf-preset
   COMMAND ${CMAKE_COMMAND}
-    "-DINPUT_FILE=${_wformat_preset_source}"
-    "-DTEMPLATE_FILE=${_wformat_preset_template}"
-    "-DOUTPUT_FILE=${_wformat_preset_header}"
-    -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/generate-wformat-preset.cmake"
-  BYPRODUCTS "${_wformat_preset_header}"
+    "-DINPUT_FILE=${_zcf_preset_source}"
+    "-DTEMPLATE_FILE=${_zcf_preset_template}"
+    "-DOUTPUT_FILE=${_zcf_preset_header}"
+    -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/generate-zcf-preset.cmake"
+  BYPRODUCTS "${_zcf_preset_header}"
   DEPENDS
-    "${_wformat_preset_source}"
-    "${_wformat_preset_template}"
-    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/generate-wformat-preset.cmake"
+    "${_zcf_preset_source}"
+    "${_zcf_preset_template}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/generate-zcf-preset.cmake"
   VERBATIM)
 
 add_custom_target(prepare-llvm-overlay
@@ -328,7 +328,7 @@ ExternalProject_Add(clang-static-libs
 
 ExternalProject_Add(zcf-local
   ${_ep_generator_args}
-  DEPENDS clang-static-libs prepare-llvm-overlay generate-wformat-preset
+  DEPENDS clang-static-libs prepare-llvm-overlay generate-zcf-preset
   SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cmake/local-clang-format"
   BINARY_DIR "${_local_tool_build_dir}"
   CMAKE_ARGS
@@ -343,7 +343,7 @@ ExternalProject_Add(zcf-local
     "-DCUSTOM_CLANG_FORMAT_INCLUDE_DIR:PATH=${CUSTOM_CLANG_FORMAT_INCLUDE_DIR}"
     "-DCUSTOM_CLANG_FORMAT_INTEGRATION_SOURCE_DIR:PATH=${CUSTOM_CLANG_FORMAT_INTEGRATION_SOURCE_DIR}"
     "-DCUSTOM_CLANG_FORMAT_EXTENSION_SOURCE_DIR:PATH=${CUSTOM_CLANG_FORMAT_EXTENSION_SOURCE_DIR}"
-    "-DCUSTOM_WFORMAT_PRESET_INCLUDE_DIR:PATH=${_wformat_preset_include_dir}"
+    "-DCUSTOM_ZCF_PRESET_INCLUDE_DIR:PATH=${_zcf_preset_include_dir}"
     "-DZCF_OUTPUT_NAME:STRING=${ZCF_OUTPUT_NAME}"
   BUILD_COMMAND
     ${CMAKE_COMMAND} --build <BINARY_DIR>
@@ -430,7 +430,7 @@ if(POWERSHELL_EXECUTABLE)
       -File "${CMAKE_CURRENT_SOURCE_DIR}/tests/validate-signature-format.ps1"
       -FormatterExe "${_zcf_exe}"
       -StyleFile "${CUSTOM_CPP_SIGNATURE_STYLE_FILE}"
-      -UpstreamStyleFile "${CMAKE_CURRENT_SOURCE_DIR}/tests/cpp-style-examples/wformat-target.clang-format"
+      -UpstreamStyleFile "${CMAKE_CURRENT_SOURCE_DIR}/tests/cpp-style-examples/zcf-target.clang-format"
       -WorkDir "${CMAKE_BINARY_DIR}/signature-format-tests"
     DEPENDS zcf
     USES_TERMINAL)
@@ -440,7 +440,7 @@ if(POWERSHELL_EXECUTABLE)
       -File "${CMAKE_CURRENT_SOURCE_DIR}/tests/validate-structure-format.ps1"
       -FormatterExe "${_zcf_exe}"
       -StyleFile "${CUSTOM_CPP_STRUCTURE_STYLE_FILE}"
-      -UpstreamStyleFile "${CMAKE_CURRENT_SOURCE_DIR}/tests/cpp-style-examples/wformat-target.clang-format"
+      -UpstreamStyleFile "${CMAKE_CURRENT_SOURCE_DIR}/tests/cpp-style-examples/zcf-target.clang-format"
       -WorkDir "${CMAKE_BINARY_DIR}/structure-format-tests"
     DEPENDS zcf
     USES_TERMINAL)
@@ -450,7 +450,7 @@ if(POWERSHELL_EXECUTABLE)
       -File "${CMAKE_CURRENT_SOURCE_DIR}/tests/validate-complete-format.ps1"
       -FormatterExe "${_zcf_exe}"
       -StyleFile "${CUSTOM_CPP_COMPLETE_STYLE_FILE}"
-      -UpstreamStyleFile "${CMAKE_CURRENT_SOURCE_DIR}/tests/cpp-style-examples/wformat-target.clang-format"
+      -UpstreamStyleFile "${CMAKE_CURRENT_SOURCE_DIR}/tests/cpp-style-examples/zcf-target.clang-format"
       -WorkDir "${CMAKE_BINARY_DIR}/complete-format-tests"
     DEPENDS zcf
     USES_TERMINAL)

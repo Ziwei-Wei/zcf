@@ -1,4 +1,4 @@
-#if defined(WFORMAT_LONG_BRANCH)
+#if defined(ZCF_LONG_BRANCH)
 int branch_01;
 int branch_02;
 int branch_03;
@@ -40,6 +40,6 @@ int branch_38;
 int branch_39;
 int branch_40;
 int branch_41;
-#else // if defined(WFORMAT_LONG_BRANCH)
+#else
 int fallback;
 #endif

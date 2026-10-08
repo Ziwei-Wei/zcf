@@ -83,7 +83,7 @@ jobs:
           build/release/bin/${{ matrix.executable }} --version
           printf 'int main(){return 0;}\n' |
             build/release/bin/${{ matrix.executable }} \
-              -style=WFormat --assume-filename=x.cpp
+              -style=ZCF --assume-filename=x.cpp
 
       - name: Build wheel
         shell: bash
@@ -160,7 +160,7 @@ jobs:
           build/release/bin/${{ matrix.executable }} --version
           printf 'int main(){return 0;}\n' |
             build/release/bin/${{ matrix.executable }} \
-              -style=WFormat --assume-filename=x.cpp
+              -style=ZCF --assume-filename=x.cpp
 
       - name: Build and repair wheel
         shell: bash

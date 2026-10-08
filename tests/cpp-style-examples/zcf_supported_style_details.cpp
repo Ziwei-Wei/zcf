@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
-// Copyright (c) wformat formatter coverage authors.
+// Copyright (c) zcf formatter coverage authors.
 // ============================================================================
 // Format style: file-level section comments and include ordering.
 // Language feature: C++23 standard-library surface plus local project includes.
 // ============================================================================
 //
-// Composite input for the C++ style behavior supported by wformat:
+// Composite input for the C++ style behavior supported by zcf:
 // clang-format configuration, uncrustify C++ spacing/newline rules, the
 // tree-sitter/integer-literal normalizer passes, C++23 syntax/library surfaces,
 // and compiler-gated C++26 language surfaces listed by cppreference.
@@ -80,7 +80,7 @@
 module;
 import std;
 import std.compat;
-export module wformat.coverage;
+export module zcf.coverage;
 export import std;
 module: private;
 #warning "C++23 formatting coverage includes the new #warning directive" // trailing comment after #warning
@@ -91,16 +91,16 @@ module: private;
 #include <vector>                                      // trailing comment after an angle-header #include
 #include "alpha.h"                                     // trailing comment after a quoted-header #include
 #// trailing comment after a null preprocessing directive
-#ifndef WFORMAT_DISABLED_HEADER_GUARD_EXAMPLE_H        // trailing comment after #ifndef
-#define WFORMAT_DISABLED_HEADER_GUARD_EXAMPLE_H        // trailing comment after an empty #define
-#define WFORMAT_HEADER(name)                    <name> // trailing comment after a function-like #define
-#if __has_include(WFORMAT_HEADER(vector))              // trailing comment after a macro-dependent #if
-#include WFORMAT_HEADER(vector)                        // trailing comment after a macro-expanded #include
+#ifndef ZCF_DISABLED_HEADER_GUARD_EXAMPLE_H        // trailing comment after #ifndef
+#define ZCF_DISABLED_HEADER_GUARD_EXAMPLE_H        // trailing comment after an empty #define
+#define ZCF_HEADER(name)                    <name> // trailing comment after a function-like #define
+#if __has_include(ZCF_HEADER(vector))              // trailing comment after a macro-dependent #if
+#include ZCF_HEADER(vector)                        // trailing comment after a macro-expanded #include
 #else // trailing comment after a preprocessor #else
 #error "formatter coverage for disabled preprocessor #error branches" // trailing comment after #error
 #endif // trailing comment after an inner conditional directive
-_Pragma("message(\"wformat _Pragma operator coverage\")") // trailing comment after the _Pragma operator
-#endif // WFORMAT_DISABLED_HEADER_GUARD_EXAMPLE_H covers include guard comments
+_Pragma("message(\"zcf _Pragma operator coverage\")") // trailing comment after the _Pragma operator
+#endif // ZCF_DISABLED_HEADER_GUARD_EXAMPLE_H covers include guard comments
 #endif // disabled header guard and macro include coverage
 
 #if 0
@@ -110,55 +110,55 @@ DynamicThrowSpecExample()
 throw(int);
 #endif // disabled digraph token coverage without relying on trigraph support
 
-#if defined(WFORMAT_CPP23_PLATFORM_A) // trailing comment after #if
-#define WFORMAT_PLATFORM_VALUE 1      // trailing comment after the first conditional definition
-#elifdef WFORMAT_CPP23_PLATFORM_B     // trailing comment after #elifdef
-#define WFORMAT_PLATFORM_VALUE 2      // trailing comment after the second conditional definition
-#elifndef WFORMAT_CPP23_PLATFORM_C    // trailing comment after #elifndef
-#define WFORMAT_PLATFORM_VALUE 3      // trailing comment after the third conditional definition
+#if defined(ZCF_CPP23_PLATFORM_A) // trailing comment after #if
+#define ZCF_PLATFORM_VALUE 1      // trailing comment after the first conditional definition
+#elifdef ZCF_CPP23_PLATFORM_B     // trailing comment after #elifdef
+#define ZCF_PLATFORM_VALUE 2      // trailing comment after the second conditional definition
+#elifndef ZCF_CPP23_PLATFORM_C    // trailing comment after #elifndef
+#define ZCF_PLATFORM_VALUE 3      // trailing comment after the third conditional definition
 #else // trailing comment after the final conditional branch
-#define WFORMAT_PLATFORM_VALUE 4      // trailing comment after the fallback definition
+#define ZCF_PLATFORM_VALUE 4      // trailing comment after the fallback definition
 #endif // trailing comment after a complete conditional definition group
 
-#ifdef WFORMAT_DIRECTIVE_COMMENT_IFDEF        // trailing comment after #ifdef
-#define WFORMAT_DIRECTIVE_COMMENT_VALUE 5     // trailing comment in the #ifdef branch
-#elif defined(WFORMAT_DIRECTIVE_COMMENT_ELIF) // trailing comment after plain #elif
-#define WFORMAT_DIRECTIVE_COMMENT_VALUE 6     // trailing comment in the #elif branch
+#ifdef ZCF_DIRECTIVE_COMMENT_IFDEF        // trailing comment after #ifdef
+#define ZCF_DIRECTIVE_COMMENT_VALUE 5     // trailing comment in the #ifdef branch
+#elif defined(ZCF_DIRECTIVE_COMMENT_ELIF) // trailing comment after plain #elif
+#define ZCF_DIRECTIVE_COMMENT_VALUE 6     // trailing comment in the #elif branch
 #else // trailing comment after the direct conditional fallback
-#define WFORMAT_DIRECTIVE_COMMENT_VALUE 7     // trailing comment in the direct conditional fallback
+#define ZCF_DIRECTIVE_COMMENT_VALUE 7     // trailing comment in the direct conditional fallback
 #endif // trailing comment after the #ifdef/#elif group
 
-#if defined(WFORMAT_CONTINUED_CONDITION_A) || \
-    defined(WFORMAT_CONTINUED_CONDITION_B)  // trailing comment after a continued #if's final physical line
-#define WFORMAT_CONTINUED_CONDITION_VALUE 1 // trailing comment in a continued conditional branch
+#if defined(ZCF_CONTINUED_CONDITION_A) || \
+    defined(ZCF_CONTINUED_CONDITION_B)  // trailing comment after a continued #if's final physical line
+#define ZCF_CONTINUED_CONDITION_VALUE 1 // trailing comment in a continued conditional branch
 #else // trailing comment after a continued conditional fallback
-#define WFORMAT_CONTINUED_CONDITION_VALUE 0 // trailing comment in the continued conditional fallback
+#define ZCF_CONTINUED_CONDITION_VALUE 0 // trailing comment in the continued conditional fallback
 #endif // trailing comment after a continued conditional group
 
 #if defined(__cpp_lib_stdatomic_h)
-#define WFORMAT_STDATOMIC_FEATURE __cpp_lib_stdatomic_h
+#define ZCF_STDATOMIC_FEATURE __cpp_lib_stdatomic_h
 #else
-#define WFORMAT_STDATOMIC_FEATURE 0
+#define ZCF_STDATOMIC_FEATURE 0
 #endif
 
 #if defined(__has_cpp_attribute)
 #if __has_cpp_attribute(deprecated)
-#define WFORMAT_HAS_DEPRECATED_ATTRIBUTE 1
+#define ZCF_HAS_DEPRECATED_ATTRIBUTE 1
 #endif
 #endif
 
 #if defined(__has_builtin)
 #if __has_builtin(__builtin_assume)
-#define WFORMAT_HAS_BUILTIN_ASSUME 1
+#define ZCF_HAS_BUILTIN_ASSUME 1
 #endif
 #endif
 
-#pragma message("wformat macro pragma coverage") // trailing comment after #pragma message
-#define WFORMAT_TEMP_MACRO 1                     // trailing comment before a pushed macro is redefined
-#pragma push_macro("WFORMAT_TEMP_MACRO")         // trailing comment after #pragma push_macro
-#undef WFORMAT_TEMP_MACRO                        // trailing comment after #undef
-#define WFORMAT_TEMP_MACRO 2                     // trailing comment after a replacement definition
-#pragma pop_macro("WFORMAT_TEMP_MACRO")          // trailing comment after #pragma pop_macro
+#pragma message("zcf macro pragma coverage") // trailing comment after #pragma message
+#define ZCF_TEMP_MACRO 1                     // trailing comment before a pushed macro is redefined
+#pragma push_macro("ZCF_TEMP_MACRO")         // trailing comment after #pragma push_macro
+#undef ZCF_TEMP_MACRO                        // trailing comment after #undef
+#define ZCF_TEMP_MACRO 2                     // trailing comment after a replacement definition
+#pragma pop_macro("ZCF_TEMP_MACRO")          // trailing comment after #pragma pop_macro
 #if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-variable"
@@ -169,17 +169,17 @@ throw(int);
 #pragma warning(disable : 4127)
 #pragma warning(pop)
 #endif
-#line 100 "wformat_macro_coverage.cpp" // trailing comment after #line
+#line 100 "zcf_macro_coverage.cpp" // trailing comment after #line
 
-#if defined(WFORMAT_ENABLE_NESTED_MACRO_LAYER) // trailing comment after an outer nested #if
-#if defined(WFORMAT_ENABLE_INNER_MACRO_LAYER)  // trailing comment after an inner nested #if
-#define WFORMAT_NESTED_MACRO_VALUE 10          // trailing comment in the innermost true branch
+#if defined(ZCF_ENABLE_NESTED_MACRO_LAYER) // trailing comment after an outer nested #if
+#if defined(ZCF_ENABLE_INNER_MACRO_LAYER)  // trailing comment after an inner nested #if
+#define ZCF_NESTED_MACRO_VALUE 10          // trailing comment in the innermost true branch
 #else // trailing comment in the innermost false branch
-#define WFORMAT_NESTED_MACRO_VALUE 11          // trailing comment in the innermost fallback definition
-#endif // defined(WFORMAT_ENABLE_INNER_MACRO_LAYER) controls nested macro coverage branch selection
+#define ZCF_NESTED_MACRO_VALUE 11          // trailing comment in the innermost fallback definition
+#endif // defined(ZCF_ENABLE_INNER_MACRO_LAYER) controls nested macro coverage branch selection
 #else // trailing comment in the outer false branch
-#define WFORMAT_NESTED_MACRO_VALUE 12          // trailing comment in the outer fallback definition
-#endif // defined(WFORMAT_ENABLE_NESTED_MACRO_LAYER) controls outer macro coverage branch selection
+#define ZCF_NESTED_MACRO_VALUE 12          // trailing comment in the outer fallback definition
+#endif // defined(ZCF_ENABLE_NESTED_MACRO_LAYER) controls outer macro coverage branch selection
 
 // ============================================================================
 // Format style: macro alignment, continuation indentation, statement macros,
@@ -192,36 +192,36 @@ throw(int);
 // the next physical line. Intermediate continuation lines therefore use block
 // comments, while final replacement lines below exercise trailing // comments.
 // ============================================================================
-#define WFORMAT_SHORT_MACRO                   1                              // macro alignment: short name
-#define WFORMAT_LONGER_MACRO_NAME             2                              // macro alignment: longer name
-#define WFORMAT_EVEN_LONGER_MACRO_NAME(value) ((value) + 3)                  // macro alignment: function-like
-#define WFORMAT_COMMENTED_MACRO(value)        ((value) * WFORMAT_TEMP_MACRO) // macro alignment across comments
-#define WFORMAT_EMPTY_MARKER                                                 // trailing comment after an empty object-like macro
-#define WFORMAT_EMPTY_FUNCTION()              TakeOne(0)                     // trailing comment after a zero-argument function-like macro
-#define WFORMAT_ALIAS_VALUE                   WFORMAT_LONGER_MACRO_NAME      // trailing comment after a macro alias
-#define WFORMAT_JOIN(a, b)                    a##b                           // trailing comment after token pasting
-#define WFORMAT_STRINGIFY(x)                  #x                             // trailing comment after stringification
-#define WFORMAT_MULTI_LINE_SUM(name, a, b) \
+#define ZCF_SHORT_MACRO                   1                              // macro alignment: short name
+#define ZCF_LONGER_MACRO_NAME             2                              // macro alignment: longer name
+#define ZCF_EVEN_LONGER_MACRO_NAME(value) ((value) + 3)                  // macro alignment: function-like
+#define ZCF_COMMENTED_MACRO(value)        ((value) * ZCF_TEMP_MACRO) // macro alignment across comments
+#define ZCF_EMPTY_MARKER                                                 // trailing comment after an empty object-like macro
+#define ZCF_EMPTY_FUNCTION()              TakeOne(0)                     // trailing comment after a zero-argument function-like macro
+#define ZCF_ALIAS_VALUE                   ZCF_LONGER_MACRO_NAME      // trailing comment after a macro alias
+#define ZCF_JOIN(a, b)                    a##b                           // trailing comment after token pasting
+#define ZCF_STRINGIFY(x)                  #x                             // trailing comment after stringification
+#define ZCF_MULTI_LINE_SUM(name, a, b) \
     int name()                             \
     {                                      \
         auto value = (a) + (b);            \
         return value;                      \
     } // trailing comment after a declaration-producing macro's final replacement line
-#define WFORMAT_MULTI_LINE_EXPR(result, left, right)            \
+#define ZCF_MULTI_LINE_EXPR(result, left, right)            \
     do {                                                        \
         auto result = (left) + (right);                         \
-        ::wformat::coverage::TakeOne(static_cast<int>(result)); \
+        ::zcf::coverage::TakeOne(static_cast<int>(result)); \
     }                                                           \
     while (false) // trailing comment after a statement macro's final replacement line
-#define WFORMAT_COMMENTED_CONTINUATION(result, left, right)                    \
+#define ZCF_COMMENTED_CONTINUATION(result, left, right)                    \
     do {                                                                       \
     /* macro continuation comment before the local variable */                 \
         auto result = (left) /* macro continuation comment between operands */ \
                       + (right);                                               \
-        ::wformat::coverage::TakeOne(static_cast<int>(result));                \
+        ::zcf::coverage::TakeOne(static_cast<int>(result));                \
     }                                                                          \
     while (false) // trailing comment after a block-commented macro's final replacement line
-#define WFORMAT_MULTI_LINE_DECLARATION(name) \
+#define ZCF_MULTI_LINE_DECLARATION(name) \
     struct name                              \
     {                                        \
         int left;                            \
@@ -232,7 +232,7 @@ throw(int);
             return left + right;             \
         }                                    \
     }; // trailing comment after a type-producing macro's final replacement line
-#define WFORMAT_MULTI_LINE_NAMESPACE_BODY(name, type_name) \
+#define ZCF_MULTI_LINE_NAMESPACE_BODY(name, type_name) \
     namespace name                                         \
     {                                                      \
     struct type_name                                       \
@@ -245,71 +245,71 @@ throw(int);
         }                                                  \
     };                                                     \
     }                                                           // trailing comment after a namespace-producing macro's final replacement line
-#define WFORMAT_API                               [[nodiscard]] // trailing comment after an attribute macro
+#define ZCF_API                               [[nodiscard]] // trailing comment after an attribute macro
 #if defined(_MSC_VER)
-#define WFORMAT_NOINLINE                          __declspec(noinline)
+#define ZCF_NOINLINE                          __declspec(noinline)
 #else
-#define WFORMAT_NOINLINE                          __attribute__((noinline))
+#define ZCF_NOINLINE                          __attribute__((noinline))
 #endif
-#define WFORMAT_ATTRIBUTE_DECL(type, name)        WFORMAT_NOINLINE type name(int value) // trailing comment after a declaration macro
-#define WFORMAT_RAW(...)                          __VA_ARGS__                           // trailing comment after a variadic passthrough macro
-#define WFORMAT_LOG_IMPL(file, line, format, ...) ::wformat::coverage::LogImpl(file, line, format __VA_OPT__(, ) __VA_ARGS__)
-#define WFORMAT_TRACE(format, ...)                WFORMAT_LOG_IMPL(__FILE__, __LINE__, format __VA_OPT__(, ) __VA_ARGS__) // trailing comment after a variadic forwarding macro
-#define WFORMAT_VA_OPT_SENTINEL(format, ...)      WFORMAT_RAW(format __VA_OPT__(, ) __VA_ARGS__)                          // trailing comment after an __VA_OPT__ macro
-#define WFORMAT_REQUIRE(expr)                                    \
+#define ZCF_ATTRIBUTE_DECL(type, name)        ZCF_NOINLINE type name(int value) // trailing comment after a declaration macro
+#define ZCF_RAW(...)                          __VA_ARGS__                           // trailing comment after a variadic passthrough macro
+#define ZCF_LOG_IMPL(file, line, format, ...) ::zcf::coverage::LogImpl(file, line, format __VA_OPT__(, ) __VA_ARGS__)
+#define ZCF_TRACE(format, ...)                ZCF_LOG_IMPL(__FILE__, __LINE__, format __VA_OPT__(, ) __VA_ARGS__) // trailing comment after a variadic forwarding macro
+#define ZCF_VA_OPT_SENTINEL(format, ...)      ZCF_RAW(format __VA_OPT__(, ) __VA_ARGS__)                          // trailing comment after an __VA_OPT__ macro
+#define ZCF_REQUIRE(expr)                                    \
     do {                                                         \
-        if (!(expr)) { ::wformat::coverage::TakeOne(__LINE__); } \
+        if (!(expr)) { ::zcf::coverage::TakeOne(__LINE__); } \
     }                                                            \
     while (false)
-#define WFORMAT_STATEMENT(expr)                               \
+#define ZCF_STATEMENT(expr)                               \
     do {                                                      \
-        ::wformat::coverage::TakeOne(static_cast<int>(expr)); \
+        ::zcf::coverage::TakeOne(static_cast<int>(expr)); \
     }                                                         \
     while (false)
-#define WFORMAT_IF_PRESENT(optional, name) if (auto name = (optional); name.has_value())
-#define WFORMAT_SWITCH(value)              switch (value)
-#define WFORMAT_CASE(value)                case value
+#define ZCF_IF_PRESENT(optional, name) if (auto name = (optional); name.has_value())
+#define ZCF_SWITCH(value)              switch (value)
+#define ZCF_CASE(value)                case value
 #define foreach(item, range)               for (item : range)
 #define Q_FOREACH(item, range)             for (item : range)
 #define BOOST_FOREACH(item, range)         for (item : range)
 #define KJ_IF_MAYBE(name, expr)            if (auto name = (expr); name.has_value())
-#define WFORMAT_DECLARE_COUNTER(name)      int name(); // trailing comment after a declaration-generating macro
-#define WFORMAT_DEFINE_COUNTER(name, value) \
+#define ZCF_DECLARE_COUNTER(name)      int name(); // trailing comment after a declaration-generating macro
+#define ZCF_DEFINE_COUNTER(name, value) \
     int name() { return value; } // trailing comment after a definition-generating macro's final line
-#define WFORMAT_BEGIN_GENERATED_NAMESPACE(name) \
+#define ZCF_BEGIN_GENERATED_NAMESPACE(name) \
     namespace name                              \
     {
-#define WFORMAT_END_GENERATED_NAMESPACE(name) } // trailing comment after a namespace-closing macro
-#define WFORMAT_MULTI_LINE_VARIADIC_CALL(format, ...) \
-    WFORMAT_TRACE(                                    \
+#define ZCF_END_GENERATED_NAMESPACE(name) } // trailing comment after a namespace-closing macro
+#define ZCF_MULTI_LINE_VARIADIC_CALL(format, ...) \
+    ZCF_TRACE(                                    \
         format                                        \
             __VA_OPT__(, )                            \
                 __VA_ARGS__                           \
     ) // trailing comment after a multiline variadic macro's final replacement line
 #if defined(_MSC_VER)
-#define WFORMAT_STDCALL                   __stdcall
-#define WFORMAT_PACKED_BEGIN              __pragma(pack(push, 1))
-#define WFORMAT_PACKED_END                __pragma(pack(pop))
-#define WFORMAT_WARNING_SUPPRESS(code)    __pragma(warning(suppress : code))
-#define WFORMAT_DECLSPEC_EXPORT           __declspec(dllexport)
-#define WFORMAT_DECLSPEC_NOVTABLE         __declspec(novtable)
-#define WFORMAT_DECLSPEC_SELECTANY        __declspec(selectany)
-#define WFORMAT_DECLSPEC_ALIGN(alignment) __declspec(align(alignment))
+#define ZCF_STDCALL                   __stdcall
+#define ZCF_PACKED_BEGIN              __pragma(pack(push, 1))
+#define ZCF_PACKED_END                __pragma(pack(pop))
+#define ZCF_WARNING_SUPPRESS(code)    __pragma(warning(suppress : code))
+#define ZCF_DECLSPEC_EXPORT           __declspec(dllexport)
+#define ZCF_DECLSPEC_NOVTABLE         __declspec(novtable)
+#define ZCF_DECLSPEC_SELECTANY        __declspec(selectany)
+#define ZCF_DECLSPEC_ALIGN(alignment) __declspec(align(alignment))
 #else
-#define WFORMAT_STDCALL
-#define WFORMAT_PACKED_BEGIN
-#define WFORMAT_PACKED_END
-#define WFORMAT_WARNING_SUPPRESS(code)
-#define WFORMAT_DECLSPEC_EXPORT
-#define WFORMAT_DECLSPEC_NOVTABLE
-#define WFORMAT_DECLSPEC_SELECTANY        inline
-#define WFORMAT_DECLSPEC_ALIGN(alignment) alignas(alignment)
+#define ZCF_STDCALL
+#define ZCF_PACKED_BEGIN
+#define ZCF_PACKED_END
+#define ZCF_WARNING_SUPPRESS(code)
+#define ZCF_DECLSPEC_EXPORT
+#define ZCF_DECLSPEC_NOVTABLE
+#define ZCF_DECLSPEC_SELECTANY        inline
+#define ZCF_DECLSPEC_ALIGN(alignment) alignas(alignment)
 #endif
 #ifndef SEC_ENTRY
-#define SEC_ENTRY WFORMAT_STDCALL
+#define SEC_ENTRY ZCF_STDCALL
 #endif
 #ifndef NTAPI
-#define NTAPI WFORMAT_STDCALL
+#define NTAPI ZCF_STDCALL
 #endif
 #ifndef _In_reads_
 #define _In_reads_(size)
@@ -347,32 +347,32 @@ throw(int);
 #ifndef WINAPI_FAMILY_PARTITION
 #define WINAPI_FAMILY_PARTITION(partitions) 0
 #endif
-#define WFORMAT_HANDLE_MESSAGE(window, message, handler) \
+#define ZCF_HANDLE_MESSAGE(window, message, handler) \
     case message:                                        \
         return handler(window, message)
-#define WFORMAT_RETURN_IF_FAILED(expression)   \
+#define ZCF_RETURN_IF_FAILED(expression)   \
     do {                                       \
         auto result = (expression);            \
         if (FAILED(result)) { return result; } \
     }                                          \
     while (false)
 #ifndef RETURN_IF_FAILED
-#define RETURN_IF_FAILED(expression) WFORMAT_RETURN_IF_FAILED(expression)
+#define RETURN_IF_FAILED(expression) ZCF_RETURN_IF_FAILED(expression)
 #endif
-#define WFORMAT_LINE_SPLICING_TEXT   "line splicing whitespace coverage" \
+#define ZCF_LINE_SPLICING_TEXT   "line splicing whitespace coverage" \
                                    "without committing trailing whitespace" // trailing comment after a spliced string macro's final line
-#define WFORMAT_UNDEF_ME             1                                      // trailing comment before undefining an object-like macro
-#undef WFORMAT_UNDEF_ME                                                     // trailing comment after undefining an object-like macro
+#define ZCF_UNDEF_ME             1                                      // trailing comment before undefining an object-like macro
+#undef ZCF_UNDEF_ME                                                     // trailing comment after undefining an object-like macro
 
 #if 0
-using WformatRawWindowCallback = long(CALLBACK*)(
+using ZCFRawWindowCallback = long(CALLBACK*)(
     void* window,
     unsigned message,
     std::uintptr_t word_parameter,
     std::intptr_t long_parameter
     );
 long WINAPI
-WformatRawWindowProcedure(
+ZCFRawWindowProcedure(
     void* window,
     unsigned message,
     std::uintptr_t word_parameter,
@@ -381,9 +381,9 @@ WformatRawWindowProcedure(
 #endif
 
 #if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP | WINAPI_PARTITION_APP | WINAPI_PARTITION_SYSTEM) // trailing comment after a function-like macro in #if
-#define WFORMAT_WINDOWS_FAMILY_AVAILABLE 1                                                             // trailing comment after an enabled feature macro
+#define ZCF_WINDOWS_FAMILY_AVAILABLE 1                                                             // trailing comment after an enabled feature macro
 #else // trailing comment after the feature macro's alternate branch
-#define WFORMAT_WINDOWS_FAMILY_AVAILABLE 0                                                             // trailing comment after a disabled feature macro
+#define ZCF_WINDOWS_FAMILY_AVAILABLE 0                                                             // trailing comment after a disabled feature macro
 #endif // trailing comment after a macro-dependent conditional group
 
 // ============================================================================
@@ -393,7 +393,7 @@ WformatRawWindowProcedure(
 // (aliases, enums, value types, class hierarchies) to specialized features
 // (virtual inheritance, coroutines, C++23 deducing-this, concepts).
 // ============================================================================
-namespace wformat
+namespace zcf
 {
 
 namespace coverage
@@ -2140,7 +2140,7 @@ struct AwaitableTask
 // body, macro-generated struct, macro-generated namespace+struct.
 // ============================================================================
 
-WFORMAT_BEGIN_GENERATED_NAMESPACE(macro_generated) // trailing comment after a namespace-opening macro invocation
+ZCF_BEGIN_GENERATED_NAMESPACE(macro_generated) // trailing comment after a namespace-opening macro invocation
 
 struct GeneratedByMacro
 {
@@ -2153,9 +2153,9 @@ struct GeneratedByMacro
     }
 };
 
-WFORMAT_END_GENERATED_NAMESPACE(macro_generated)     // trailing comment after a namespace-closing macro invocation
-WFORMAT_MULTI_LINE_DECLARATION(MacroGeneratedRecord) // trailing comment after a type-generating macro invocation
-WFORMAT_MULTI_LINE_NAMESPACE_BODY(
+ZCF_END_GENERATED_NAMESPACE(macro_generated)     // trailing comment after a namespace-closing macro invocation
+ZCF_MULTI_LINE_DECLARATION(MacroGeneratedRecord) // trailing comment after a type-generating macro invocation
+ZCF_MULTI_LINE_NAMESPACE_BODY(
     macro_multiline_namespace, // trailing comment after the first namespace macro argument
     MultilineNamespaceRecord   // trailing comment after the final namespace macro argument
     )                          // trailing comment after a multiline namespace macro invocation
@@ -2183,18 +2183,18 @@ struct IdentityClosure:
 // callbacks, C ABI tables, advanced SAL, WIL-style returns, OVERLAPPED layouts.
 // ============================================================================
 // --- HRESULT aliases and GUID/COM interface declarations ---
-using WformatHResult = long;
-inline constexpr WformatHResult WformatSuccess      = 0;
-inline constexpr WformatHResult WformatPointerError = -1;
+using ZCFHResult = long;
+inline constexpr ZCFHResult ZCFSuccess      = 0;
+inline constexpr ZCFHResult ZCFPointerError = -1;
 
 #ifndef IFACEMETHODIMP
-#define IFACEMETHODIMP WformatHResult
+#define IFACEMETHODIMP ZCFHResult
 #endif
 #ifndef FAILED
 #define FAILED(result) ((result) < 0)
 #endif
 
-struct WformatGuid
+struct ZCFGuid
 {
     std::uint32_t data1;
     std::uint16_t data2;
@@ -2202,7 +2202,7 @@ struct WformatGuid
     std::uint8_t data4[8];
 };
 
-inline constexpr WformatGuid WformatClassId =
+inline constexpr ZCFGuid ZCFClassId =
 {
     0x8A28E9D1,
     0x7F44,
@@ -2210,23 +2210,23 @@ inline constexpr WformatGuid WformatClassId =
     {0x90, 0xE1, 0x12, 0x48, 0xA5, 0x7C, 0xD3, 0x61}
 };
 
-struct WformatUnknown
+struct ZCFUnknown
 {
-    virtual WformatHResult
+    virtual ZCFHResult
     QueryInterface(
-        const WformatGuid& identifier,
+        const ZCFGuid& identifier,
         _COM_Outptr_ void** object
         ) = 0;
 
     virtual
-    ~WformatUnknown() = default;
+    ~ZCFUnknown() = default;
 };
 
 MIDL_INTERFACE("8A28E9D1-7F44-4B59-90E1-1248A57CD361")
-WformatComInterface :
-WformatUnknown
+ZCFComInterface :
+ZCFUnknown
 {
-    virtual WformatHResult
+    virtual ZCFHResult
         ReadBuffer(
         _In_reads_bytes_(input_size) const void* input,
         std::size_t input_size,
@@ -2241,25 +2241,25 @@ WformatUnknown
 };
 
 #if defined(_MSC_VER)
-struct __declspec(uuid("519CFA70-59A7-4B7F-95DB-A3B42A4CC879")) WformatUuidTagged
+struct __declspec(uuid("519CFA70-59A7-4B7F-95DB-A3B42A4CC879")) ZCFUuidTagged
 {
 };
 
-using WformatUuidType = decltype(__uuidof(WformatUuidTagged));
+using ZCFUuidType = decltype(__uuidof(ZCFUuidTagged));
 #else
-struct WformatUuidTagged
+struct ZCFUuidTagged
 {
 };
 #endif
 
 // --- SAL-decorated C ABI callback types and calling conventions ---
-typedef WformatHResult (WFORMAT_STDCALL* WformatDataCallback)(
+typedef ZCFHResult (ZCF_STDCALL* ZCFDataCallback)(
     _In_reads_ (size) const std::byte* data,
     std::size_t size,
     _COM_Outptr_ void** context
     );
 
-typedef WformatHResult (SEC_ENTRY* WformatBufferCallback)(
+typedef ZCFHResult (SEC_ENTRY* ZCFBufferCallback)(
     _In_reads_bytes_ (input_size) const void* input,
     std::size_t input_size,
     _Out_writes_bytes_to_ (capacity, *written) std::byte* output,
@@ -2268,76 +2268,76 @@ typedef WformatHResult (SEC_ENTRY* WformatBufferCallback)(
     _Deref_out_opt_ void** state
     );
 
-using WformatCloseCallback = void (*)(
+using ZCFCloseCallback = void (*)(
     _Inout_ void* context
     );
 
-WformatHResult NTAPI
-WformatNativeStatus(
+ZCFHResult NTAPI
+ZCFNativeStatus(
     _Inout_ void* context
     ) noexcept
 {
-    return (context != nullptr) ? WformatSuccess : WformatPointerError;
+    return (context != nullptr) ? ZCFSuccess : ZCFPointerError;
 }
 
-WformatHResult
-WformatForwardResult(
-    WformatHResult result
+ZCFHResult
+ZCFForwardResult(
+    ZCFHResult result
     )
 {
     RETURN_IF_FAILED(result);
 
-    return WformatSuccess;
+    return ZCFSuccess;
 }
 
 // --- Move-only native handle ownership ---
-using WformatNativeHandle = void*;
+using ZCFNativeHandle = void*;
 
 void
-WformatCloseNativeHandle(
-    WformatNativeHandle handle
+ZCFCloseNativeHandle(
+    ZCFNativeHandle handle
     ) noexcept
 {
     (void) handle;
 }
 
-class WformatUniqueNativeHandle
+class ZCFUniqueNativeHandle
 {
 public:
 
-    WformatUniqueNativeHandle() = default;
+    ZCFUniqueNativeHandle() = default;
 
-    explicit WformatUniqueNativeHandle(
-        WformatNativeHandle handle
+    explicit ZCFUniqueNativeHandle(
+        ZCFNativeHandle handle
         ) noexcept:
         handle_(handle)
     {
     }
 
-    ~WformatUniqueNativeHandle()
+    ~ZCFUniqueNativeHandle()
     {
         reset();
     }
 
-    WformatUniqueNativeHandle(
-        const WformatUniqueNativeHandle&
+    ZCFUniqueNativeHandle(
+        const ZCFUniqueNativeHandle&
         ) = delete;
 
-    WformatUniqueNativeHandle&
+    ZCFUniqueNativeHandle&
     operator=(
-        const WformatUniqueNativeHandle&
+        const ZCFUniqueNativeHandle&
         ) = delete;
 
-    WformatUniqueNativeHandle(
-        WformatUniqueNativeHandle&& other
+    ZCFUniqueNativeHandle(
+        ZCFUniqueNativeHandle&& other
         ) noexcept:
         handle_(other.release())
     {
     }
 
-    WformatUniqueNativeHandle&
+    ZCFUniqueNativeHandle&
     operator=(
-        WformatUniqueNativeHandle&& other
+        ZCFUniqueNativeHandle&& other
         ) noexcept
     {
         if (this != &other)
@@ -2348,13 +2348,13 @@ public:
         return *this;
     }
 
-    [[nodiscard]] WformatNativeHandle
+    [[nodiscard]] ZCFNativeHandle
     get() const noexcept
     {
         return handle_;
     }
 
-    [[nodiscard]] WformatNativeHandle
+    [[nodiscard]] ZCFNativeHandle
     release() noexcept
     {
         return std::exchange(
@@ -2365,12 +2365,12 @@ public:
 
     void
     reset(
-        WformatNativeHandle replacement = nullptr
+        ZCFNativeHandle replacement = nullptr
         ) noexcept
     {
         if (handle_ != nullptr)
         {
-            WformatCloseNativeHandle(handle_);
+            ZCFCloseNativeHandle(handle_);
         }
 
         handle_ = replacement;
@@ -2378,21 +2378,21 @@ public:
 
 private:
 
-    WformatNativeHandle handle_ = nullptr;
+    ZCFNativeHandle handle_ = nullptr;
 };
 
 // --- Packed records and OVERLAPPED-style layouts ---
-WFORMAT_PACKED_BEGIN                                 // trailing comment after a standalone pragma macro invocation
-struct WFORMAT_DECLSPEC_ALIGN(1) WformatPackedHeader // trailing comment after an embedded alignment macro
+ZCF_PACKED_BEGIN                                 // trailing comment after a standalone pragma macro invocation
+struct ZCF_DECLSPEC_ALIGN(1) ZCFPackedHeader // trailing comment after an embedded alignment macro
 {
     std::uint16_t type;
     std::uint16_t length;
     std::uint32_t sequence;
 };
 
-WFORMAT_PACKED_END // trailing comment after a matching standalone pragma macro invocation
+ZCF_PACKED_END // trailing comment after a matching standalone pragma macro invocation
 
-struct WformatOverlappedLike
+struct ZCFOverlappedLike
 {
     union
     {
@@ -2411,34 +2411,34 @@ struct WformatOverlappedLike
 };
 
 // --- Callback tables, std::function slots, and COM implementation ---
-struct WformatCallbackTable
+struct ZCFCallbackTable
 {
     std::size_t size;
-    WformatDataCallback on_data;
-    WformatCloseCallback on_close;
+    ZCFDataCallback on_data;
+    ZCFCloseCallback on_close;
 };
 
-struct WformatCallbacks
+struct ZCFCallbacks
 {
     std::function<void()> on_ready                   = [] {};
     std::function<void(std::string_view)> on_message = nullptr;
-    WformatDataCallback raw_callback                 = nullptr;
+    ZCFDataCallback raw_callback                 = nullptr;
 };
 
-struct WFORMAT_DECLSPEC_NOVTABLE WformatSystemCallback
+struct ZCF_DECLSPEC_NOVTABLE ZCFSystemCallback
 {
-    virtual WformatHResult
+    virtual ZCFHResult
         OnData(
         _In_reads_(size) const std::byte * data,
         std::size_t size
         ) = 0;
 
     virtual
-    ~WformatSystemCallback() = default;
+    ~ZCFSystemCallback() = default;
 };
 
-struct WformatSystemCallbackImpl final:
-    WformatSystemCallback
+struct ZCFSystemCallbackImpl final:
+    ZCFSystemCallback
 {
     IFACEMETHODIMP
     OnData(
@@ -2446,7 +2446,7 @@ struct WformatSystemCallbackImpl final:
         std::size_t size
         ) override
     {
-        return ((data != nullptr) && (size > 0)) ? WformatSuccess : WformatPointerError;
+        return ((data != nullptr) && (size > 0)) ? ZCFSuccess : ZCFPointerError;
     }
 
     void
@@ -2468,10 +2468,10 @@ struct WformatSystemCallbackImpl final:
 
 // --- Pointer-to-member callback dispatch ---
 template <typename Interface>
-WformatHResult
+ZCFHResult
 InvokeMemberCallback(
     Interface* target,
-    WformatHResult (Interface::*callback)(
+    ZCFHResult (Interface::*callback)(
         _In_reads_(size) const std::byte*,
         std::size_t
         ),
@@ -2486,11 +2486,11 @@ InvokeMemberCallback(
 }
 
 // --- Exported callbacks and message dispatch ---
-WFORMAT_DECLSPEC_SELECTANY const std::uint32_t WformatAbiVersion = 1; // trailing comment after a declaration-specifier macro
+ZCF_DECLSPEC_SELECTANY const std::uint32_t ZCFAbiVersion = 1; // trailing comment after a declaration-specifier macro
 
-WFORMAT_DECLSPEC_EXPORT WformatHResult WFORMAT_STDCALL
+ZCF_DECLSPEC_EXPORT ZCFHResult ZCF_STDCALL
 // trailing comment after export and calling-convention macros
-WformatRawDataCallback(
+ZCFRawDataCallback(
     _In_reads_(size) const std::byte* data,
     std::size_t size,
     _COM_Outptr_ void** context
@@ -2498,16 +2498,16 @@ WformatRawDataCallback(
 {
     if ((data == nullptr) || (size == 0) || (context == nullptr))
     {
-        return WformatPointerError;
+        return ZCFPointerError;
     }
 
     *context = const_cast<std::byte*>(data);
 
-    return WformatSuccess;
+    return ZCFSuccess;
 }
 
 void
-WformatRawCloseCallback(
+ZCFRawCloseCallback(
     _Inout_ void* context
     )
 {
@@ -2515,7 +2515,7 @@ WformatRawCloseCallback(
 }
 
 int
-WformatHandleMessage(
+ZCFHandleMessage(
     int window,
     int message
     )
@@ -2524,22 +2524,22 @@ WformatHandleMessage(
 }
 
 int
-WformatDispatchMessage(
+ZCFDispatchMessage(
     int window,
     int message
     )
 {
     switch (message)
     {
-        WFORMAT_HANDLE_MESSAGE(
+        ZCF_HANDLE_MESSAGE(
             window,
             1,
-            WformatHandleMessage
+            ZCFHandleMessage
             );
-        WFORMAT_HANDLE_MESSAGE(
+        ZCF_HANDLE_MESSAGE(
             window,
             2,
-            WformatHandleMessage
+            ZCFHandleMessage
             );
         default:
             return 0;
@@ -2547,43 +2547,43 @@ WformatDispatchMessage(
 }
 
 // --- HRESULT propagation and cleanup labels ---
-WformatHResult
+ZCFHResult
 ExerciseRdcoreSystemPatterns(
     _In_reads_(size) const std::byte* data,
     std::size_t size,
     _Out_ int* callback_count
     )
 {
-    WformatHResult result  = WformatSuccess;
+    ZCFHResult result  = ZCFSuccess;
     void* callback_context = nullptr;
-    WformatSystemCallbackImpl receiver;
-    WformatCallbacks callbacks;
-    WformatCallbackTable callback_table
+    ZCFSystemCallbackImpl receiver;
+    ZCFCallbacks callbacks;
+    ZCFCallbackTable callback_table
     {
-        sizeof(WformatCallbackTable),
-        WformatRawDataCallback,
-        WformatRawCloseCallback
+        sizeof(ZCFCallbackTable),
+        ZCFRawDataCallback,
+        ZCFRawCloseCallback
     };
 
-    WFORMAT_WARNING_SUPPRESS(4127) // trailing comment after a diagnostic-control macro invocation
+    ZCF_WARNING_SUPPRESS(4127) // trailing comment after a diagnostic-control macro invocation
 
     if ((data == nullptr) || (callback_count == nullptr))
     {
-        result = WformatPointerError;
+        result = ZCFPointerError;
         goto Cleanup;
     }
 
     callbacks.on_ready = std::bind(
-        &WformatSystemCallbackImpl::OnReady,
+        &ZCFSystemCallbackImpl::OnReady,
         &receiver
         );
     callbacks.on_message = std::bind(
-        &WformatSystemCallbackImpl::OnMessage,
+        &ZCFSystemCallbackImpl::OnMessage,
         &receiver,
         std::placeholders::_1
         );
     callbacks.raw_callback = callback_table.on_data;
-    result                 = WformatForwardResult(
+    result                 = ZCFForwardResult(
         callbacks.raw_callback(
             data,
             size,
@@ -2600,7 +2600,7 @@ ExerciseRdcoreSystemPatterns(
     callbacks.on_message("connected");
     result = InvokeMemberCallback(
         &receiver,
-        &WformatSystemCallbackImpl::OnData,
+        &ZCFSystemCallbackImpl::OnData,
         data,
         size
         );
@@ -2610,14 +2610,14 @@ ExerciseRdcoreSystemPatterns(
         goto ErrorCleanup;
     }
 
-    result = WformatNativeStatus(callback_context);
+    result = ZCFNativeStatus(callback_context);
 
     if (FAILED(result))
     {
         goto ErrorCleanup;
     }
 
-    *callback_count = receiver.ready_count + WformatDispatchMessage(
+    *callback_count = receiver.ready_count + ZCFDispatchMessage(
         1,
         2
         );
@@ -2651,7 +2651,7 @@ LogImpl(
     ...
     );
 
-WFORMAT_DECLARE_COUNTER(MacroDeclaredCounter) // trailing comment after a declaration-generating macro invocation
+ZCF_DECLARE_COUNTER(MacroDeclaredCounter) // trailing comment after a declaration-generating macro invocation
 
 int
 NormalizeSingleArgument(
@@ -2744,26 +2744,26 @@ CompareInts(
 }
 
 // --- Macro-annotated and language-linkage helpers ---
-WFORMAT_API // trailing comment after a standalone attribute macro invocation
+ZCF_API // trailing comment after a standalone attribute macro invocation
 int
 MacroAnnotatedFunction(
     int value
     )
 {
-    return WFORMAT_JOIN(
+    return ZCF_JOIN(
         val, // trailing comment after the first token-paste macro argument
         ue   // trailing comment after the final token-paste macro argument
         );   // trailing comment after a token-paste macro invocation
 }
 
-WFORMAT_ATTRIBUTE_DECL(
+ZCF_ATTRIBUTE_DECL(
     int,                   // trailing comment after a declaration macro's type argument
     MacroAttributeFunction // trailing comment after a declaration macro's name argument
     )                      // trailing comment after a declaration macro invocation
 {
     return value + 1;
 }
-WFORMAT_MULTI_LINE_SUM(
+ZCF_MULTI_LINE_SUM(
     MacroGeneratedFunction, // trailing comment after a function-generating macro name
     1,                      // trailing comment after a function-generating macro operand
     2                       // trailing comment after the final function-generating macro operand
@@ -2791,9 +2791,9 @@ ExportedCppBlockValue()
     return 44;
 }
 }
-WFORMAT_DEFINE_COUNTER(
+ZCF_DEFINE_COUNTER(
     MacroDeclaredCounter,      // trailing comment after a definition macro's name argument
-    WFORMAT_NESTED_MACRO_VALUE // trailing comment after a nested object-like macro argument
+    ZCF_NESTED_MACRO_VALUE // trailing comment after a nested object-like macro argument
     )                          // trailing comment after a definition-generating macro invocation
 
 // --- Coroutine helpers ---
@@ -3430,7 +3430,7 @@ ExerciseControl(
     auto signed_size          = 0z;
     auto unsigned_size        = 0uz;
     const char* escaped_names = "\N{LATIN CAPITAL LETTER A}\x{41}\o{101}\u{0041}";
-    [[assume(WFORMAT_PLATFORM_VALUE > 0)]];
+    [[assume(ZCF_PLATFORM_VALUE > 0)]];
     static_assert(1);
 
     if constexpr (1)
@@ -3658,39 +3658,39 @@ ExerciseMacros(
     std::vector<int>& values
     )
 {
-    WFORMAT_EMPTY_MARKER                                                     // trailing comment after an empty macro invocation
-    int macro_object_value   = WFORMAT_ALIAS_VALUE;                          // trailing comment after an object-like macro expression
-    int macro_function_value = WFORMAT_EVEN_LONGER_MACRO_NAME(1);            // trailing comment after a function-like macro expression
-    int macro_nested_value   = WFORMAT_COMMENTED_MACRO(WFORMAT_SHORT_MACRO); // trailing comment after nested macro expressions
+    ZCF_EMPTY_MARKER                                                     // trailing comment after an empty macro invocation
+    int macro_object_value   = ZCF_ALIAS_VALUE;                          // trailing comment after an object-like macro expression
+    int macro_function_value = ZCF_EVEN_LONGER_MACRO_NAME(1);            // trailing comment after a function-like macro expression
+    int macro_nested_value   = ZCF_COMMENTED_MACRO(ZCF_SHORT_MACRO); // trailing comment after nested macro expressions
 
-    WFORMAT_REQUIRE(!values.empty()); // trailing comment after a statement macro invocation
-    WFORMAT_STATEMENT(values.size()); // aligned comment after another statement macro invocation
-    WFORMAT_EMPTY_FUNCTION();         // trailing comment after a zero-argument function-like macro invocation
-    WFORMAT_TRACE(
+    ZCF_REQUIRE(!values.empty()); // trailing comment after a statement macro invocation
+    ZCF_STATEMENT(values.size()); // aligned comment after another statement macro invocation
+    ZCF_EMPTY_FUNCTION();         // trailing comment after a zero-argument function-like macro invocation
+    ZCF_TRACE(
         // trailing comment after a macro invocation's opening parenthesis
         "opening-parenthesis-comment"
         );
-    WFORMAT_TRACE(
+    ZCF_TRACE(
         "values=%d",                                                                  // trailing comment after a variadic macro's fixed argument
         static_cast<int>(values.size())                                               // trailing comment after its final variadic argument
         );                                                                            // trailing comment after a multiline variadic macro invocation
-    WFORMAT_TRACE("values-without-varargs");                                          // trailing comment after an empty-variadic invocation
-    WFORMAT_TRACE(WFORMAT_LINE_SPLICING_TEXT);                                        // trailing comment after a nested object-like macro argument
-    TakeOne(static_cast<int>(sizeof(WFORMAT_STRINGIFY(wformat_stringify_argument)))); // trailing comment after a nested stringification macro
-    WFORMAT_MULTI_LINE_VARIADIC_CALL(
+    ZCF_TRACE("values-without-varargs");                                          // trailing comment after an empty-variadic invocation
+    ZCF_TRACE(ZCF_LINE_SPLICING_TEXT);                                        // trailing comment after a nested object-like macro argument
+    TakeOne(static_cast<int>(sizeof(ZCF_STRINGIFY(zcf_stringify_argument)))); // trailing comment after a nested stringification macro
+    ZCF_MULTI_LINE_VARIADIC_CALL(
         "values=%d",                                              // trailing comment after the fixed argument of a multiline macro
         static_cast<int>(values.size())                           // trailing comment after the final variadic argument
         );                                                        // trailing comment after a multiline forwarding macro invocation
-    WFORMAT_MULTI_LINE_VARIADIC_CALL("values-with-empty-va-opt"); // trailing comment after an empty __VA_OPT__ path
-    WFORMAT_MULTI_LINE_EXPR(
+    ZCF_MULTI_LINE_VARIADIC_CALL("values-with-empty-va-opt"); // trailing comment after an empty __VA_OPT__ path
+    ZCF_MULTI_LINE_EXPR(
         macro_total,               // trailing comment after a statement macro's declaration argument
         values.size(),             // trailing comment after its first expression argument
-        WFORMAT_NESTED_MACRO_VALUE // trailing comment after its object-like macro argument
+        ZCF_NESTED_MACRO_VALUE // trailing comment after its object-like macro argument
         );                         // trailing comment after a multiline statement macro invocation
-    WFORMAT_COMMENTED_CONTINUATION(
+    ZCF_COMMENTED_CONTINUATION(
         commented_macro_total,                              // trailing comment after a block-commented macro's declaration argument
         values.size(),                                      // trailing comment after its first expression argument
-        WFORMAT_VA_OPT_SENTINEL(WFORMAT_NESTED_MACRO_VALUE) // trailing comment after a nested variadic macro argument
+        ZCF_VA_OPT_SENTINEL(ZCF_NESTED_MACRO_VALUE) // trailing comment after a nested variadic macro argument
         );                                                  // trailing comment after a block-commented macro invocation
     foreach(
         int value, // trailing comment after a foreach macro's declaration argument
@@ -3702,7 +3702,7 @@ ExerciseMacros(
 
     Q_FOREACH (int value, values) // trailing comment after a single-line foreach macro header
     {
-        TakeOne(value + WFORMAT_SHORT_MACRO); // trailing comment after an object-like macro in a body expression
+        TakeOne(value + ZCF_SHORT_MACRO); // trailing comment after an object-like macro in a body expression
     }
 
     BOOST_FOREACH(
@@ -3710,7 +3710,7 @@ ExerciseMacros(
         values     // trailing comment after a second foreach macro's range argument
         )          // trailing comment after a second multiline foreach macro header
     {
-        TakeOne(WFORMAT_EVEN_LONGER_MACRO_NAME(value)); // trailing comment after a function-like macro in a body expression
+        TakeOne(ZCF_EVEN_LONGER_MACRO_NAME(value)); // trailing comment after a function-like macro in a body expression
     }
     std::optional<int> maybe = values.empty() ? std::nullopt : std::optional<int>{values.front()};
     KJ_IF_MAYBE(
@@ -3720,21 +3720,21 @@ ExerciseMacros(
     {
         TakeOne(*found); // trailing comment inside an optional-if macro body
     }
-    WFORMAT_IF_PRESENT(
+    ZCF_IF_PRESENT(
         maybe,  // trailing comment after an if macro's source argument
         present // trailing comment after an if macro's declaration argument
         )       // trailing comment after a multiline if macro header
     {
-        TakeOne(*present + WFORMAT_LONGER_MACRO_NAME); // trailing comment after an aliased object-like macro expression
+        TakeOne(*present + ZCF_LONGER_MACRO_NAME); // trailing comment after an aliased object-like macro expression
     }
-    WFORMAT_SWITCH(values.size()) // trailing comment after a switch macro header
+    ZCF_SWITCH(values.size()) // trailing comment after a switch macro header
     {
-        WFORMAT_CASE(0):// trailing comment after a case-label macro invocation
+        ZCF_CASE(0):// trailing comment after a case-label macro invocation
         {
-            values.push_back(WFORMAT_COMMENTED_MACRO(1)); // trailing comment after a function-like macro argument
+            values.push_back(ZCF_COMMENTED_MACRO(1)); // trailing comment after a function-like macro argument
             break;
         }
-        WFORMAT_CASE(1):// trailing comment after a second case-label macro invocation
+        ZCF_CASE(1):// trailing comment after a second case-label macro invocation
         {
             values.push_back(MacroDeclaredCounter()); // trailing comment after a macro-generated function call
             break;
@@ -3745,7 +3745,7 @@ ExerciseMacros(
             break;
         }
     }
-    auto raw_pair = WFORMAT_RAW(std::pair<int, int>{1, 2}); // trailing comment after a variadic passthrough macro expression
+    auto raw_pair = ZCF_RAW(std::pair<int, int>{1, 2}); // trailing comment after a variadic passthrough macro expression
     macro_generated::GeneratedByMacro generated {raw_pair.first + raw_pair.second};
     MacroGeneratedRecord record {raw_pair.first, raw_pair.second};
     macro_multiline_namespace::MultilineNamespaceRecord namespace_record {record.total()};
@@ -3958,7 +3958,7 @@ ExerciseLanguageGaps(
     g_constinit_counter    += g_thread_local_counter;
     AccessAndFriend access {g_constinit_counter};
     ProtectedAccessProbe protected_probe {access.seed()};
-    std::atomic<int> cpp_atomic_counter {WFORMAT_STDATOMIC_FEATURE};
+    std::atomic<int> cpp_atomic_counter {ZCF_STDATOMIC_FEATURE};
     cpp_atomic_counter.fetch_add(
         1,
         std::memory_order_relaxed
@@ -4236,7 +4236,7 @@ ExerciseCxx23SyntaxAndLibrary(
         "{}",
         folded
         );
-    std::fstream exclusive_file("wformat.tmp", std::ios::out | std::ios::noreplace);
+    std::fstream exclusive_file("zcf.tmp", std::ios::out | std::ios::noreplace);
     char buffer[128] {};
     std::ospanstream stream(std::span<char>(buffer));
     stream << static_cast<const volatile void*>(values.data()) << std::stacktrace::current();
@@ -4500,7 +4500,7 @@ ExerciseObjects()
 
 } // namespace coverage
 
-} // namespace wformat
+} // namespace zcf
 
 // ============================================================================
 // Format style: template specialization outside its primary namespace, parse/
@@ -4509,7 +4509,7 @@ ExerciseObjects()
 // format() implementation for Comparable so it can be used with std::format.
 // ============================================================================
 template <>
-struct std::formatter<wformat::coverage::Comparable>
+struct std::formatter<zcf::coverage::Comparable>
 {
     constexpr auto
     parse(
@@ -4529,7 +4529,7 @@ struct std::formatter<wformat::coverage::Comparable>
 
     auto
     format(
-        const wformat::coverage::Comparable& c,
+        const zcf::coverage::Comparable& c,
         std::format_context& ctx
         ) const
     {
@@ -4554,7 +4554,7 @@ private:
     bool verbose_ = false;
 };
 
-namespace wformat
+namespace zcf
 {
 
 namespace coverage
@@ -4589,7 +4589,7 @@ ExerciseFormatting(
         short_fmt
         );
     auto multiline_fmt = std::format(
-        "wformat formatter coverage:\n"
+        "zcf formatter coverage:\n"
         "  size    = {:>8}\n"
         "  front   = {:>8}\n"
         "  back    = {:>8}\n"
@@ -4664,7 +4664,7 @@ ExerciseFormatting(
 }
 
 void
-wformat::coverage::TakeOne(
+zcf::coverage::TakeOne(
     int value
     )
 {
@@ -4672,7 +4672,7 @@ wformat::coverage::TakeOne(
 }
 
 void
-wformat::coverage::LogImpl(
+zcf::coverage::LogImpl(
     const char* file,
     int line,
     const char* format,
@@ -4683,7 +4683,7 @@ wformat::coverage::LogImpl(
 }
 
 void
-wformat::coverage::LegacyCreateInt(
+zcf::coverage::LegacyCreateInt(
     int** output
     )
 {
@@ -4691,7 +4691,7 @@ wformat::coverage::LegacyCreateInt(
 }
 
 void
-wformat::coverage::LegacyResetInt(
+zcf::coverage::LegacyResetInt(
     int** output
     )
 {
@@ -5141,7 +5141,7 @@ ExerciseMixedInitializerExpressions()
 
 } // namespace coverage
 
-} // namespace wformat
+} // namespace zcf
 
 // ============================================================================
 // COMPLEX FUNCTION-DEFINITION COLLISION SUITE
@@ -5155,7 +5155,7 @@ ExerciseMixedInitializerExpressions()
 // parameters. Each definition combines grammar forms covered separately above.
 // ============================================================================
 
-namespace wformat::coverage::complex_function_definitions
+namespace zcf::coverage::complex_function_definitions
 {
 
 template <typename Error, template < typename ...> class Container>
@@ -5277,7 +5277,7 @@ requires(
     std::is_object_v<Receiver>&& (std::copy_constructible<Args>&& ...)
     );
 
-} // namespace wformat::coverage::complex_function_definitions
+} // namespace zcf::coverage::complex_function_definitions
 
 template <typename Error, template < typename ...> class Container>
 template <typename Record, std::size_t Extent>
@@ -5286,7 +5286,7 @@ template <
     std::sentinel_for<Iterator> Sentinel,
     typename Projector>
 [[nodiscard]] constexpr auto
-wformat::                      // Project namespace.
+zcf::                      // Project namespace.
 coverage::                     // Coverage namespace.
 complex_function_definitions:: // Stress namespace.
 Workflow<Error, Container>::   // Outer class template.
@@ -5317,7 +5317,7 @@ template <typename State>
 template <typename ... Handlers>
 template <typename Event, typename ... Context>
 [[nodiscard]] constexpr decltype(auto)
-wformat::                      // Project namespace.
+zcf::                      // Project namespace.
 coverage::                     // Coverage namespace.
 complex_function_definitions:: // Stress namespace.
 DispatchTable<State>::         // Outer class template.
@@ -5335,7 +5335,7 @@ requires(std::invocable<Handlers&, Event, Context...>&& ...)
 
 template <typename Source>
 template <typename Target>
-wformat::                      // Project namespace.
+zcf::                      // Project namespace.
 coverage::                     // Coverage namespace.
 complex_function_definitions:: // Stress namespace.
 ConversionView<Source>::       // Constrained conversion class.
@@ -5349,7 +5349,7 @@ requires std::same_as<Source, Target>
 
 template <typename Allocator, typename Logger>
 template <typename Handle>
-wformat::                         // Project namespace.
+zcf::                         // Project namespace.
 coverage::                        // Coverage namespace.
 complex_function_definitions::    // Stress namespace.
 ResourcePool<Allocator, Logger>:: // Outer resource class.
@@ -5372,7 +5372,7 @@ catch (...)
 
 template <typename Allocator, typename Logger>
 template <typename Handle>
-wformat::                         // Project namespace.
+zcf::                         // Project namespace.
 coverage::                        // Coverage namespace.
 complex_function_definitions::    // Stress namespace.
 ResourcePool<Allocator, Logger>:: // Outer resource class.
@@ -5385,7 +5385,7 @@ Lease<Handle>::                   // Nested lease class.
 template <>
 template <>
 [[nodiscard]] auto
-wformat::                      // Project namespace.
+zcf::                      // Project namespace.
 coverage::                     // Coverage namespace.
 complex_function_definitions:: // Stress namespace.
 Decoder<int>::                 // Fully specialized decoder.
@@ -5398,7 +5398,7 @@ Decode<std::string_view>(
 
 template <std::size_t Depth, std::size_t Rows, std::size_t Columns>
 auto
-wformat::                             // Project namespace.
+zcf::                             // Project namespace.
 coverage::                            // Coverage namespace.
 complex_function_definitions::        // Stress namespace.
 TensorStorage<Depth, Rows, Columns>:: // Multidimensional storage.
@@ -5411,7 +5411,7 @@ operator[](
 
 template <typename Result, typename Receiver, typename ... Args>
 [[nodiscard("member invocation results must be observed")]] constexpr auto
-wformat::                      // Project namespace.
+zcf::                      // Project namespace.
 coverage::                     // Coverage namespace.
 complex_function_definitions:: // Stress namespace.
 InvokeMemberAcross(
@@ -5444,7 +5444,7 @@ requires(
 // compile-validated fixture because that frontend does not implement them.
 // ============================================================================
 
-namespace wformat::coverage::modern_function_definitions
+namespace zcf::coverage::modern_function_definitions
 {
 
 template <typename Value, std::size_t Extent>
@@ -5703,6 +5703,6 @@ ExercisePlaceholderVariables()
 }
 #endif
 
-} // namespace wformat::coverage::modern_function_definitions
+} // namespace zcf::coverage::modern_function_definitions
 
 // Format style: final end-of-file line comment coverage.

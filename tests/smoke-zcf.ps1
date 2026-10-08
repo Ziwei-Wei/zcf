@@ -65,11 +65,11 @@ $sourcePath = Join-Path $WorkDir 'sample.cpp'
     "int main(){return 0;}`n",
     [System.Text.UTF8Encoding]::new($false)
 )
-$zcfOutput = & $ZcfExe -style=WFormat $sourcePath
+$zcfOutput = & $ZcfExe -style=ZCF $sourcePath
 if ($LASTEXITCODE -ne 0) {
     throw "zcf formatting failed with exit code $LASTEXITCODE."
 }
-$clangOutput = & $ClangFormatCompatExe -style=WFormat $sourcePath
+$clangOutput = & $ClangFormatCompatExe -style=ZCF $sourcePath
 if ($LASTEXITCODE -ne 0) {
     throw "clang-format alias failed with exit code $LASTEXITCODE."
 }
@@ -77,15 +77,15 @@ if (($zcfOutput -join "`n") -cne ($clangOutput -join "`n")) {
     throw 'zcf and clang-format alias formatting output differ.'
 }
 if (($zcfOutput -join "`n") -notmatch "int`nmain\(\)") {
-    throw 'zcf did not apply the WFormat preset.'
+    throw 'zcf did not apply the ZCF preset.'
 }
-Write-Host '[PASS] WFormat alias parity'
+Write-Host '[PASS] ZCF alias parity'
 
-$dump = & $ZcfExe -style=WFormat -dump-config
+$dump = & $ZcfExe -style=ZCF -dump-config
 if ($LASTEXITCODE -ne 0 -or
     ($dump -join "`n") -notmatch 'BodyDrivenLambdaExpansion:\s+true') {
-    throw 'zcf did not expose the WFormat extension configuration.'
+    throw 'zcf did not expose the ZCF extension configuration.'
 }
-Write-Host '[PASS] WFormat configuration'
+Write-Host '[PASS] ZCF configuration'
 
 Write-Host 'zcf smoke tests passed'

@@ -1,7 +1,7 @@
 #include "integration/clang-format/ExtensionContext.h"
 #include "integration/clang-format/ExtensionHooks.h"
 
-#include "WFormatPresetConfig.h"
+#include "ZCFPresetConfig.h"
 
 #include "clang/Format/Format.h"
 #include "llvm/Support/MemoryBufferRef.h"
@@ -15,7 +15,7 @@ namespace clang::format::extensions {
 bool getExtensionPredefinedStyle(llvm::StringRef Name,
                                  FormatStyle::LanguageKind Language,
                                  FormatStyle *Style) {
-  if (!Name.equals_insensitive("wformat"))
+  if (!Name.equals_insensitive("zcf"))
     return false;
   if (Language != FormatStyle::LK_Cpp) {
     *Style = getLLVMStyle(Language);
@@ -26,10 +26,9 @@ bool getExtensionPredefinedStyle(llvm::StringRef Name,
 
   FormatStyle Preset = getLLVMStyle(Language);
   const std::error_code Error = parseConfiguration(
-      llvm::MemoryBufferRef(WFormatPresetConfiguration, "WFormat preset"),
-      &Preset);
+      llvm::MemoryBufferRef(ZCFPresetConfiguration, "ZCF preset"), &Preset);
   if (Error) {
-    llvm::errs() << "Failed to parse the embedded WFormat preset: "
+    llvm::errs() << "Failed to parse the embedded ZCF preset: "
                  << Error.message() << "\n";
     return false;
   }
@@ -41,7 +40,7 @@ bool getExtensionPredefinedStyle(llvm::StringRef Name,
   Preset.BreakBeforeBinaryOperators = FormatStyle::BOS_All;
   Preset.BreakBinaryOperations = FormatStyle::BBO_RespectPrecedence;
   Preset.PenaltyBreakAssignment = 1000;
-  enableWFormatPresetExtensions(Language);
+  enableZCFPresetExtensions(Language);
   Preset.Language = Language;
   *Style = std::move(Preset);
   return true;

@@ -11,5 +11,5 @@ run()
         );
     result = outer_function(short_value, nested_function(first_value_with_a_very_long_name, second_value_with_a_very_long_name), final_value);
     result = outer_function(short_value, nested_function(first_value_with_a_very_long_name, deeper_function(alpha_value_with_a_very_long_name, beta_value_with_a_very_long_name)), final_value);
-    WFORMAT_CALL(short_value, nested_function(first_value_with_a_very_long_name, second_value_with_a_very_long_name), macro_final_value_with_a_very_long_name);
+    ZCF_CALL(short_value, nested_function(first_value_with_a_very_long_name, second_value_with_a_very_long_name), macro_final_value_with_a_very_long_name);
 }
