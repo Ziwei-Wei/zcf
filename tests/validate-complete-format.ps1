@@ -177,6 +177,36 @@ foreach ($caseId in $caseIds) {
     Write-Host "PASS $caseId"
 }
 
+$regressionContracts = [ordered]@{
+    'attributed-label-namespace-indentation' = "file:$StyleFile"
+    'qualified-name-nested-continuation' = "file:$StyleFile"
+    'adjacent-string-literal-arguments' = "file:$StyleFile"
+    'return-blank-line-contexts' =
+        '{BasedOnStyle: LLVM, ZCFExtensions: {BlankLineBeforeReturn: true}}'
+    'control-statement-trailing-comments' =
+        '{BasedOnStyle: LLVM, ZCFExtensions: {BlankLinesAroundControlStatements: true}}'
+}
+foreach ($contract in $regressionContracts.GetEnumerator()) {
+    $caseId = [string]$contract.Key
+    $style = [string]$contract.Value
+    $actualPath = Join-Path $WorkDir "$caseId.actual.cpp"
+    Copy-Item -LiteralPath (Join-Path $CaseDir "$caseId.input.cpp") `
+        -Destination $actualPath
+    & $FormatterExe "-style=$style" -i $actualPath
+    if ($LASTEXITCODE -ne 0) {
+        throw "$caseId formatting failed with exit code $LASTEXITCODE."
+    }
+    $firstPass = Get-NormalizedText -Path $actualPath
+    if ($firstPass -cne (Get-NormalizedText -Path (Join-Path $CaseDir "$caseId.zcf.cpp"))) {
+        throw "$caseId output differs from its checked-in regression target."
+    }
+    & $FormatterExe "-style=$style" -i $actualPath
+    if ($LASTEXITCODE -ne 0 -or (Get-NormalizedText -Path $actualPath) -cne $firstPass) {
+        throw "$caseId is not idempotent across two formatter passes."
+    }
+    Write-Host "PASS $caseId regression"
+}
+
 $nativeArrowInput =
     Join-Path $CaseDir 'compound-requirement-arrow-spacing.input.cpp'
 $nativeArrowActual = Join-Path $WorkDir 'native-arrow-spacing.cpp'
@@ -986,4 +1016,4 @@ if ($canonicalFirstHash -cne $canonicalSecondHash) {
 }
 Write-Host 'PASS canonical complete-policy idempotence'
 
-Write-Host 'Validated 6 specialized extension contracts, 4 reviewed preset contracts, and 1 reviewed native contract.'
+Write-Host "Validated 6 specialized extension contracts, 4 reviewed preset contracts, $($regressionContracts.Count) regression contracts, and 1 reviewed native contract."

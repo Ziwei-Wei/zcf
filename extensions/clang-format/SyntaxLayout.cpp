@@ -919,6 +919,18 @@ bool isExpandedArithmeticCall(const FormatToken &LeftParen) {
 
 } // namespace
 
+bool hasRequiredStringLiteralBreak(const FormatToken &LeftParen,
+                                   const FormatStyle &Style) {
+  if (!Style.BreakAdjacentStringLiterals)
+    return false;
+  for (const auto *Token = LeftParen.Next;
+       Token && Token != LeftParen.MatchingParen; Token = Token->Next) {
+    if (Token->isStringLiteral() && Token->Previous->isStringLiteral())
+      return true;
+  }
+  return false;
+}
+
 void customizeSyntaxLayout(AnnotatedLine &Line,
                            const FormatStyle &FormatStyle) {
   const auto *Style = getActiveExtensionStyleConst();
@@ -930,8 +942,10 @@ void customizeSyntaxLayout(AnnotatedLine &Line,
 
   if (Style->CompactSingleArgumentCalls) {
     for (auto *Token = Line.First; Token; Token = Token->Next) {
-      if (isCallParen(Line, *Token) && hasOneSimpleArgument(*Token))
+      if (isCallParen(Line, *Token) && hasOneSimpleArgument(*Token) &&
+          !hasRequiredStringLiteralBreak(*Token, FormatStyle)) {
         compactSingleArgumentCall(*Token);
+      }
     }
   }
 

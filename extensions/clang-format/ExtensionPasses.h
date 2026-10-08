@@ -29,6 +29,12 @@ std::optional<unsigned> getSyntaxNewLineColumn(const LineState &State,
 std::optional<unsigned> getDeclarationNewLineColumn(const LineState &State,
                                                     const FormatStyle &Style);
 
+// Returns true when clang-format requires a break between adjacent string
+// literals inside the parenthesized list, so compacting it would override
+// BreakAdjacentStringLiterals.
+bool hasRequiredStringLiteralBreak(const FormatToken &LeftParen,
+                                   const FormatStyle &Style);
+
 std::pair<tooling::Replacements, unsigned>
 runStructuralPostFormatPass(const Environment &Env, const FormatStyle &Style);
 std::pair<tooling::Replacements, unsigned>
