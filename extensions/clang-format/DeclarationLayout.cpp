@@ -146,7 +146,7 @@ std::optional<unsigned> getDeclarationNewLineColumn(const LineState &State,
     return State.FirstIndent;
 
   if (Style->DeindentQualifiedFunctionNames && State.Line->Level == 0 &&
-      !containsAssignment(*State.Line) &&
+      State.NextToken->NestingLevel == 0 && !containsAssignment(*State.Line) &&
       isQualifiedFunctionComponent(*State.NextToken))
     return State.FirstIndent;
 

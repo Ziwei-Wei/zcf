@@ -190,14 +190,6 @@ int nextNonCommentToken(const std::vector<TokenInfo> &Tokens, int Index) {
   return -1;
 }
 
-int previousNonCommentToken(const std::vector<TokenInfo> &Tokens, int Index) {
-  for (--Index; Index >= 0; --Index) {
-    if (Tokens[Index].Tok.isNot(tok::comment))
-      return Index;
-  }
-  return -1;
-}
-
 bool containsCodeAfterOnSameLine(const std::vector<TokenInfo> &Tokens,
                                  int Index) {
   const unsigned LineIndex = Tokens[Index].LineIndex;
@@ -288,10 +280,6 @@ StringRef getLineIndent(StringRef Code, const PhysicalLine &Line) {
   const size_t FirstContent = LineText.find_first_not_of(" \t");
   return FirstContent == StringRef::npos ? LineText
                                          : LineText.take_front(FirstContent);
-}
-
-std::string buildAggregateIndent(StringRef BaseIndent, unsigned ExtraLevels) {
-  return BaseIndent.str() + std::string(ExtraLevels * 4, ' ');
 }
 
 std::optional<std::string> normalizeIntegerLiteralCase(StringRef Text) {
@@ -427,6 +415,32 @@ bool suppressBlankLineAfter(const std::vector<PhysicalLine> &Lines,
          NextFirst == "while" || NextFirst == "case" || NextFirst == "default";
 }
 
+void queueBlankLineBefore(const std::vector<TokenInfo> &Tokens,
+                          unsigned TokenIndex,
+                          AffectedRangeManager &AffectedRangeMgr,
+                          SourceLocation StartOfFile, StringRef Code,
+                          StringRef DefaultLineEnding, StringRef Context,
+                          std::vector<PendingReplacement> &Pending) {
+  if (TokenIndex == 0)
+    return;
+
+  // Raw tokens include comments, so the range between adjacent tokens contains
+  // only whitespace.
+  const TokenInfo &Token = Tokens[TokenIndex];
+  const unsigned BeginOffset = Tokens[TokenIndex - 1].EndOffset;
+  const unsigned EndOffset = Token.Offset;
+  if (!rangeAffected(AffectedRangeMgr, StartOfFile, BeginOffset, EndOffset,
+                     Token.Offset, Token.EndOffset)) {
+    return;
+  }
+  const StringRef Existing = getExistingText(Code, BeginOffset, EndOffset);
+  if (countNewlines(Existing) < 2) {
+    queueReplacement(Pending, Code, BeginOffset, EndOffset,
+                     buildLeadingWhitespace(Existing, 2, DefaultLineEnding),
+                     Context);
+  }
+}
+
 void collectIntegerLiteralFixes(const std::vector<TokenInfo> &Tokens,
                                 AffectedRangeManager &AffectedRangeMgr,
                                 SourceLocation StartOfFile, StringRef Code,
@@ -505,23 +519,10 @@ void collectBlankLineFixes(const std::vector<TokenInfo> &Tokens,
       continue;
 
     if (!suppressBlankLineBefore(Lines, Tokens, Keyword.LineIndex, I)) {
-      const int PreviousTokenIndex = previousNonCommentToken(
-          Tokens, static_cast<int>(*StartLine.FirstNonCommentToken));
-      if (PreviousTokenIndex >= 0) {
-        const unsigned BeginOffset = Tokens[PreviousTokenIndex].EndOffset;
-        const unsigned EndOffset = Keyword.Offset;
-        if (rangeAffected(AffectedRangeMgr, StartOfFile, BeginOffset, EndOffset,
-                          Keyword.Offset, Keyword.EndOffset)) {
-          const StringRef Existing =
-              getExistingText(Code, BeginOffset, EndOffset);
-          if (countNewlines(Existing) < 2) {
-            queueReplacement(
-                Pending, Code, BeginOffset, EndOffset,
-                buildLeadingWhitespace(Existing, 2, DefaultLineEnding),
-                "BlankLinesAroundControlStatements(before)");
-          }
-        }
-      }
+      queueBlankLineBefore(Tokens, *StartLine.FirstToken, AffectedRangeMgr,
+                           StartOfFile, Code, DefaultLineEnding,
+                           "BlankLinesAroundControlStatements(before)",
+                           Pending);
     }
 
     if (!suppressBlankLineAfter(Lines, Tokens,
@@ -529,25 +530,70 @@ void collectBlankLineFixes(const std::vector<TokenInfo> &Tokens,
                                 CloseBraceIndex)) {
       const unsigned NextLineIndex =
           nextNonBlankLine(Lines, Tokens[CloseBraceIndex].LineIndex);
-      if (NextLineIndex < Lines.size() &&
-          Lines[NextLineIndex].FirstNonCommentToken) {
-        const TokenInfo &NextToken =
-            Tokens[*Lines[NextLineIndex].FirstNonCommentToken];
-        const unsigned BeginOffset = Tokens[CloseBraceIndex].EndOffset;
-        const unsigned EndOffset = NextToken.Offset;
-        if (rangeAffected(AffectedRangeMgr, StartOfFile, BeginOffset, EndOffset,
-                          NextToken.Offset, NextToken.EndOffset)) {
-          const StringRef Existing =
-              getExistingText(Code, BeginOffset, EndOffset);
-          if (countNewlines(Existing) < 2) {
-            queueReplacement(
-                Pending, Code, BeginOffset, EndOffset,
-                buildLeadingWhitespace(Existing, 2, DefaultLineEnding),
-                "BlankLinesAroundControlStatements(after)");
-          }
-        }
+      if (NextLineIndex < Lines.size() && Lines[NextLineIndex].FirstToken) {
+        queueBlankLineBefore(
+            Tokens, *Lines[NextLineIndex].FirstToken, AffectedRangeMgr,
+            StartOfFile, Code, DefaultLineEnding,
+            "BlankLinesAroundControlStatements(after)", Pending);
       }
     }
+  }
+}
+
+// Separates a return statement from a preceding completed statement or goto
+// label. A comment block directly above the return stays attached to it.
+void collectReturnBlankLineFixes(const std::vector<TokenInfo> &Tokens,
+                                 const std::vector<PhysicalLine> &Lines,
+                                 AffectedRangeManager &AffectedRangeMgr,
+                                 SourceLocation StartOfFile, StringRef Code,
+                                 StringRef DefaultLineEnding,
+                                 std::vector<PendingReplacement> &Pending) {
+  for (unsigned LineIndex = 0; LineIndex < Lines.size(); ++LineIndex) {
+    const PhysicalLine &Line = Lines[LineIndex];
+    if (Line.InPPDirective || Line.Disabled || !Line.FirstToken ||
+        Line.FirstToken != Line.FirstNonCommentToken ||
+        Tokens[*Line.FirstToken].Text != "return") {
+      continue;
+    }
+
+    unsigned FirstLineIndex = LineIndex;
+    while (FirstLineIndex > 0 && Lines[FirstLineIndex - 1].CommentOnly &&
+           !Lines[FirstLineIndex - 1].Disabled) {
+      --FirstLineIndex;
+    }
+    const unsigned PreviousLineIndex =
+        previousNonBlankLine(Lines, FirstLineIndex);
+    if (PreviousLineIndex >= Lines.size())
+      continue;
+    const PhysicalLine &PreviousLine = Lines[PreviousLineIndex];
+    if (PreviousLine.Disabled || !PreviousLine.LastNonCommentToken)
+      continue;
+
+    if (PreviousLine.InPPDirective) {
+      const int DirectiveIndex =
+          nextNonCommentToken(Tokens, *PreviousLine.FirstNonCommentToken);
+      if (DirectiveIndex >= 0 && Tokens[DirectiveIndex].Text != "endif" &&
+          isConditionalDirectiveName(Tokens[DirectiveIndex].Text)) {
+        continue;
+      }
+    } else {
+      // Goto labels stay visually separated from the return they guard;
+      // switch labels and incomplete statements keep the return attached.
+      const TokenInfo &PreviousFirst =
+          Tokens[*PreviousLine.FirstNonCommentToken];
+      const TokenInfo &PreviousLast = Tokens[*PreviousLine.LastNonCommentToken];
+      const bool EndsStatement =
+          PreviousLast.Tok.isOneOf(tok::semi, tok::r_brace);
+      const bool EndsGotoLabel = PreviousLast.Tok.is(tok::colon) &&
+                                 PreviousFirst.Text != "case" &&
+                                 PreviousFirst.Text != "default";
+      if (!EndsStatement && !EndsGotoLabel)
+        continue;
+    }
+
+    queueBlankLineBefore(Tokens, *Lines[FirstLineIndex].FirstToken,
+                         AffectedRangeMgr, StartOfFile, Code, DefaultLineEnding,
+                         "BlankLineBeforeReturn", Pending);
   }
 }
 
@@ -791,10 +837,12 @@ bool aggregateNodeHasOnlyLeaves(const AggregateNode &Node) {
 
 std::vector<std::string> renderAggregateNode(const AggregateNode &Node,
                                              StringRef BaseIndent,
-                                             unsigned IndentLevel) {
-  const std::string Indent = buildAggregateIndent(BaseIndent, IndentLevel);
+                                             unsigned IndentLevel,
+                                             const FormatStyle &Style) {
+  const std::string Indent =
+      buildIndentText(BaseIndent, IndentLevel * Style.IndentWidth, Style);
   const std::string ChildIndent =
-      buildAggregateIndent(BaseIndent, IndentLevel + 1);
+      buildIndentText(BaseIndent, (IndentLevel + 1) * Style.IndentWidth, Style);
 
   if (Node.Elements.empty())
     return {Indent + "{}"};
@@ -834,7 +882,7 @@ std::vector<std::string> renderAggregateNode(const AggregateNode &Node,
     }
 
     const auto ChildLines =
-        renderAggregateNode(*Element.Child, BaseIndent, IndentLevel + 1);
+        renderAggregateNode(*Element.Child, BaseIndent, IndentLevel + 1, Style);
     if (HasPendingLeafLine) {
       Lines.push_back(PendingLeafLine);
       Lines.back() += ",";
@@ -856,6 +904,7 @@ void collectExpandedAggregateFixes(const std::vector<TokenInfo> &Tokens,
                                    SourceLocation StartOfFile, StringRef Code,
                                    StringRef DefaultLineEnding,
                                    bool NormalizeIntegerLiterals,
+                                   const FormatStyle &Style,
                                    std::vector<PendingReplacement> &Pending) {
   for (unsigned I = 0; I < Tokens.size(); ++I) {
     const TokenInfo &EqualToken = Tokens[I];
@@ -895,7 +944,7 @@ void collectExpandedAggregateFixes(const std::vector<TokenInfo> &Tokens,
 
     const StringRef BaseIndent =
         getLineIndent(Code, Lines[EqualToken.LineIndex]);
-    const auto RenderedLines = renderAggregateNode(*Root, BaseIndent, 0);
+    const auto RenderedLines = renderAggregateNode(*Root, BaseIndent, 0, Style);
     std::string Replacement = DefaultLineEnding.str();
     for (size_t LineIndex = 0; LineIndex < RenderedLines.size(); ++LineIndex) {
       if (LineIndex != 0)
@@ -960,6 +1009,16 @@ void addQueuedReplacements(const std::vector<PendingReplacement> &Pending,
 
 } // namespace
 
+std::string buildIndentText(StringRef BaseIndent, unsigned Columns,
+                            const FormatStyle &Style) {
+  if (Style.UseTab == FormatStyle::UT_Never)
+    return BaseIndent.str() + std::string(Columns, ' ');
+  const unsigned TabWidth = std::max(Style.TabWidth, 1u);
+  const unsigned Column = measureColumn(BaseIndent, TabWidth) + Columns;
+  return std::string(Column / TabWidth, '\t') +
+         std::string(Column % TabWidth, ' ');
+}
+
 std::pair<tooling::Replacements, unsigned>
 runStructuralPostFormatPass(const Environment &Env, const FormatStyle &Style) {
   const auto *ExtensionStyle = getActiveExtensionStyleConst();
@@ -968,13 +1027,15 @@ runStructuralPostFormatPass(const Environment &Env, const FormatStyle &Style) {
 
   const bool NormalizeIntegerLiteralCaseEnabled =
       ExtensionStyle->NormalizeIntegerLiteralCase;
+  const bool BlankLineBeforeReturnEnabled =
+      ExtensionStyle->BlankLineBeforeReturn;
   const bool BlankLinesAroundControlStatementsEnabled =
       ExtensionStyle->BlankLinesAroundControlStatements;
   const bool ExpandNestedAggregateBracesEnabled =
       ExtensionStyle->ExpandNestedAggregateBraces;
   const bool AlignMacrosAcrossDirectivesEnabled =
       ExtensionStyle->AlignMacrosAcrossDirectives;
-  if (!NormalizeIntegerLiteralCaseEnabled &&
+  if (!NormalizeIntegerLiteralCaseEnabled && !BlankLineBeforeReturnEnabled &&
       !BlankLinesAroundControlStatementsEnabled &&
       !ExpandNestedAggregateBracesEnabled &&
       !AlignMacrosAcrossDirectivesEnabled) {
@@ -1113,10 +1174,14 @@ runStructuralPostFormatPass(const Environment &Env, const FormatStyle &Style) {
                           AffectedRangeMgr, StartOfFile, Code,
                           DefaultLineEnding, Pending);
   }
+  if (BlankLineBeforeReturnEnabled) {
+    collectReturnBlankLineFixes(Tokens, Lines, AffectedRangeMgr, StartOfFile,
+                                Code, DefaultLineEnding, Pending);
+  }
   if (ExpandNestedAggregateBracesEnabled) {
     collectExpandedAggregateFixes(
         Tokens, Lines, MatchingBraces, AffectedRangeMgr, StartOfFile, Code,
-        DefaultLineEnding, NormalizeIntegerLiteralCaseEnabled, Pending);
+        DefaultLineEnding, NormalizeIntegerLiteralCaseEnabled, Style, Pending);
   }
   if (NormalizeIntegerLiteralCaseEnabled) {
     collectIntegerLiteralFixes(Tokens, AffectedRangeMgr, StartOfFile, Code,

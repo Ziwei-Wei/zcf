@@ -1,6 +1,6 @@
 # zcf implementation status
 
-Last updated: 2026-10-05
+Last updated: 2026-10-08
 
 ## Complete
 
@@ -73,12 +73,39 @@ Current fix:
   installation, `zcf activate`, custom-policy formatting, uninstall, and
   artifact-upload tests.
 
+## Extension conflict fixes
+
+Code review against upstream clang-format behavior found and fixed:
+
+- attributed labels indented by raw brace depth, which counted namespace braces
+  and ignored `UseTab`;
+- qualified-name continuation dedenting template and parameter arguments to
+  column 0;
+- call compaction joining adjacent string literals despite
+  `BreakAdjacentStringLiterals`;
+- `BlankLineBeforeReturn` separating a return from a braceless control header,
+  a switch label, or an opening brace, and splitting it from its comment;
+- `BlankLinesAroundControlStatements` deleting trailing comments;
+- nested-aggregate expansion hardcoding four-space indentation, ignoring
+  `UseTab`, merging an expanded aggregate into a short function, and treating
+  lambda bodies in call chains as aggregate levels.
+
+Each fix has a same-ID regression contract run by
+`tests/validate-complete-format.ps1`.
+
+Remaining review follow-ups:
+
+1. Rename or split options whose names describe spacing but also change line
+   breaks (`SpaceParameterPackEllipses`,
+   `SpaceAnnotationsAndFunctionPointers`, `SpaceAfterParenthesizedSpecifiers`).
+2. Share one source scan between the structural and boundary post-format
+   passes and consolidate duplicated layout helpers.
+
 ## Remaining release work
 
-1. Merge [PR #1](https://github.com/Ziwei-Wei/zcf/pull/1).
-2. Register the repository's `pypi` environment as a PyPI trusted publisher.
-3. Push tag `v0.1.0`.
-4. Confirm public installation:
+1. Register the repository's `pypi` environment as a PyPI trusted publisher.
+2. Push tag `v0.1.0`.
+3. Confirm public installation:
 
    ```text
    pipx install zcf

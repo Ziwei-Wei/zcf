@@ -403,25 +403,37 @@ void collectAttributedLabelIndentFixes(
     const std::vector<PhysicalLine> &Lines,
     const std::vector<int> &MatchingSquares,
     AffectedRangeManager &AffectedRangeMgr, SourceLocation StartOfFile,
-    StringRef Code, unsigned IndentWidth,
+    StringRef Code, const FormatStyle &Style,
     std::vector<PendingReplacement> &Pending) {
   for (const PhysicalLine &Line : Lines) {
-    if (!findAttributedLabelColon(Line, Tokens, MatchingSquares) ||
-        !Line.FirstNonCommentToken) {
+    if (!findAttributedLabelColon(Line, Tokens, MatchingSquares))
       continue;
+
+    const unsigned FirstTokenIndex = Line.Tokens.front();
+    const unsigned LabelDepth = Tokens[FirstTokenIndex].BraceDepth;
+    int OpenBraceIndex = static_cast<int>(FirstTokenIndex) - 1;
+    while (OpenBraceIndex >= 0 &&
+           (Tokens[OpenBraceIndex].Tok.isNot(tok::l_brace) ||
+            Tokens[OpenBraceIndex].BraceDepth + 1 != LabelDepth)) {
+      --OpenBraceIndex;
     }
+    if (OpenBraceIndex < 0)
+      continue;
 
     const unsigned BeginOffset = Line.StartOffset;
-    const unsigned EndOffset = Tokens[*Line.FirstNonCommentToken].Offset;
+    const unsigned EndOffset = Tokens[FirstTokenIndex].Offset;
     if (!rangeAffected(AffectedRangeMgr, StartOfFile, BeginOffset, EndOffset,
-                       Tokens[*Line.FirstNonCommentToken].Offset,
-                       Tokens[*Line.FirstNonCommentToken].EndOffset)) {
+                       Tokens[FirstTokenIndex].Offset,
+                       Tokens[FirstTokenIndex].EndOffset)) {
       continue;
     }
 
-    const std::string Indent(
-        Tokens[*Line.FirstNonCommentToken].BraceDepth * IndentWidth, ' ');
-    queueReplacement(Pending, Code, BeginOffset, EndOffset, Indent,
+    // Statements in a block are indented one level past the line that opens
+    // the block, independent of namespace and ordinary-label indentation.
+    const StringRef BlockIndent =
+        getLineIndent(Code, Lines[Tokens[OpenBraceIndex].LineIndex]);
+    queueReplacement(Pending, Code, BeginOffset, EndOffset,
+                     buildIndentText(BlockIndent, Style.IndentWidth, Style),
                      "IndentAttributedLabels");
   }
 }
@@ -933,7 +945,7 @@ runBoundaryPostFormatPass(const Environment &Env, const FormatStyle &Style) {
   if (IndentAttributedLabelsEnabled) {
     collectAttributedLabelIndentFixes(Tokens, Lines, MatchingSquares,
                                       AffectedRangeMgr, StartOfFile, Code,
-                                      Style.IndentWidth, Pending);
+                                      Style, Pending);
   }
   if (SeparateClosingDirectiveCommentsEnabled) {
     collectClosingDirectiveCommentFixes(Tokens, Lines, AffectedRangeMgr,

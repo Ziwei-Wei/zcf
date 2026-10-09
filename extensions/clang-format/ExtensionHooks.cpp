@@ -6,8 +6,6 @@
 #include "FormatToken.h"
 #include "TokenAnnotator.h"
 
-#include <algorithm>
-
 #include "llvm/Support/Error.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -85,7 +83,8 @@ void forceMultilineList(FormatToken &LeftParen) {
 void compactCallIfItFits(FormatToken &LeftParen,
                          const FormatStyle &FormatStyle) {
   if (FormatStyle.ColumnLimit == 0 || !LeftParen.MatchingParen ||
-      !LeftParen.Next || LeftParen.Next == LeftParen.MatchingParen)
+      !LeftParen.Next || LeftParen.Next == LeftParen.MatchingParen ||
+      hasRequiredStringLiteralBreak(LeftParen, FormatStyle))
     return;
 
   bool HasNewline = false;
@@ -135,9 +134,6 @@ void customizeAnnotatedLine(AnnotatedLine &Line,
   const auto *Style = getActiveExtensionStyleConst();
   if (!Style)
     return;
-
-  if (Style->BlankLineBeforeReturn && Line.First->is(tok::kw_return))
-    Line.First->NewlinesBefore = std::max(Line.First->NewlinesBefore, 2u);
 
   for (auto *Token = Line.First; Token; Token = Token->Next) {
     if (Style->ProgressiveCallExpansion && isFunctionCallParen(Line, *Token))
