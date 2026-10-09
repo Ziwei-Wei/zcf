@@ -185,6 +185,11 @@ $regressionContracts = [ordered]@{
         '{BasedOnStyle: LLVM, ZCFExtensions: {BlankLineBeforeReturn: true}}'
     'control-statement-trailing-comments' =
         '{BasedOnStyle: LLVM, ZCFExtensions: {BlankLinesAroundControlStatements: true}}'
+    'nested-aggregate-standalone-layout' =
+        '{BasedOnStyle: LLVM, ZCFExtensions: {ExpandNestedAggregateBraces: true}}'
+    'nested-aggregate-tab-indentation' =
+        '{BasedOnStyle: LLVM, IndentWidth: 4, TabWidth: 4, UseTab: ForIndentation, ZCFExtensions: {ExpandNestedAggregateBraces: true}}'
+    'lambda-chain-is-not-aggregate' = "file:$StyleFile"
 }
 foreach ($contract in $regressionContracts.GetEnumerator()) {
     $caseId = [string]$contract.Key

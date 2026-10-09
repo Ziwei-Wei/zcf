@@ -4,6 +4,7 @@
 #include "clang/Tooling/Core/Replacement.h"
 
 #include <optional>
+#include <string>
 #include <utility>
 
 namespace clang::format {
@@ -34,6 +35,11 @@ std::optional<unsigned> getDeclarationNewLineColumn(const LineState &State,
 // BreakAdjacentStringLiterals.
 bool hasRequiredStringLiteralBreak(const FormatToken &LeftParen,
                                    const FormatStyle &Style);
+
+// Extends BaseIndent by Columns, emitting tabs when the style's UseTab setting
+// allows them.
+std::string buildIndentText(llvm::StringRef BaseIndent, unsigned Columns,
+                            const FormatStyle &Style);
 
 std::pair<tooling::Replacements, unsigned>
 runStructuralPostFormatPass(const Environment &Env, const FormatStyle &Style);

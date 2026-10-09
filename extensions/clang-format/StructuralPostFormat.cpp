@@ -282,10 +282,6 @@ StringRef getLineIndent(StringRef Code, const PhysicalLine &Line) {
                                          : LineText.take_front(FirstContent);
 }
 
-std::string buildAggregateIndent(StringRef BaseIndent, unsigned ExtraLevels) {
-  return BaseIndent.str() + std::string(ExtraLevels * 4, ' ');
-}
-
 std::optional<std::string> normalizeIntegerLiteralCase(StringRef Text) {
   if (Text.empty() || Text.front() == '.')
     return std::nullopt;
@@ -841,10 +837,12 @@ bool aggregateNodeHasOnlyLeaves(const AggregateNode &Node) {
 
 std::vector<std::string> renderAggregateNode(const AggregateNode &Node,
                                              StringRef BaseIndent,
-                                             unsigned IndentLevel) {
-  const std::string Indent = buildAggregateIndent(BaseIndent, IndentLevel);
+                                             unsigned IndentLevel,
+                                             const FormatStyle &Style) {
+  const std::string Indent =
+      buildIndentText(BaseIndent, IndentLevel * Style.IndentWidth, Style);
   const std::string ChildIndent =
-      buildAggregateIndent(BaseIndent, IndentLevel + 1);
+      buildIndentText(BaseIndent, (IndentLevel + 1) * Style.IndentWidth, Style);
 
   if (Node.Elements.empty())
     return {Indent + "{}"};
@@ -884,7 +882,7 @@ std::vector<std::string> renderAggregateNode(const AggregateNode &Node,
     }
 
     const auto ChildLines =
-        renderAggregateNode(*Element.Child, BaseIndent, IndentLevel + 1);
+        renderAggregateNode(*Element.Child, BaseIndent, IndentLevel + 1, Style);
     if (HasPendingLeafLine) {
       Lines.push_back(PendingLeafLine);
       Lines.back() += ",";
@@ -906,6 +904,7 @@ void collectExpandedAggregateFixes(const std::vector<TokenInfo> &Tokens,
                                    SourceLocation StartOfFile, StringRef Code,
                                    StringRef DefaultLineEnding,
                                    bool NormalizeIntegerLiterals,
+                                   const FormatStyle &Style,
                                    std::vector<PendingReplacement> &Pending) {
   for (unsigned I = 0; I < Tokens.size(); ++I) {
     const TokenInfo &EqualToken = Tokens[I];
@@ -945,7 +944,7 @@ void collectExpandedAggregateFixes(const std::vector<TokenInfo> &Tokens,
 
     const StringRef BaseIndent =
         getLineIndent(Code, Lines[EqualToken.LineIndex]);
-    const auto RenderedLines = renderAggregateNode(*Root, BaseIndent, 0);
+    const auto RenderedLines = renderAggregateNode(*Root, BaseIndent, 0, Style);
     std::string Replacement = DefaultLineEnding.str();
     for (size_t LineIndex = 0; LineIndex < RenderedLines.size(); ++LineIndex) {
       if (LineIndex != 0)
@@ -1009,6 +1008,16 @@ void addQueuedReplacements(const std::vector<PendingReplacement> &Pending,
 }
 
 } // namespace
+
+std::string buildIndentText(StringRef BaseIndent, unsigned Columns,
+                            const FormatStyle &Style) {
+  if (Style.UseTab == FormatStyle::UT_Never)
+    return BaseIndent.str() + std::string(Columns, ' ');
+  const unsigned TabWidth = std::max(Style.TabWidth, 1u);
+  const unsigned Column = measureColumn(BaseIndent, TabWidth) + Columns;
+  return std::string(Column / TabWidth, '\t') +
+         std::string(Column % TabWidth, ' ');
+}
 
 std::pair<tooling::Replacements, unsigned>
 runStructuralPostFormatPass(const Environment &Env, const FormatStyle &Style) {
@@ -1172,7 +1181,7 @@ runStructuralPostFormatPass(const Environment &Env, const FormatStyle &Style) {
   if (ExpandNestedAggregateBracesEnabled) {
     collectExpandedAggregateFixes(
         Tokens, Lines, MatchingBraces, AffectedRangeMgr, StartOfFile, Code,
-        DefaultLineEnding, NormalizeIntegerLiteralCaseEnabled, Pending);
+        DefaultLineEnding, NormalizeIntegerLiteralCaseEnabled, Style, Pending);
   }
   if (NormalizeIntegerLiteralCaseEnabled) {
     collectIntegerLiteralFixes(Tokens, AffectedRangeMgr, StartOfFile, Code,

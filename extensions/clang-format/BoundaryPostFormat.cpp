@@ -432,19 +432,8 @@ void collectAttributedLabelIndentFixes(
     // the block, independent of namespace and ordinary-label indentation.
     const StringRef BlockIndent =
         getLineIndent(Code, Lines[Tokens[OpenBraceIndex].LineIndex]);
-    std::string Indent;
-    if (Style.UseTab == FormatStyle::UT_Never) {
-      Indent = BlockIndent.str() + std::string(Style.IndentWidth, ' ');
-    } else {
-      const unsigned TabWidth = std::max(Style.TabWidth, 1u);
-      unsigned Column = 0;
-      for (char C : BlockIndent)
-        Column = C == '\t' ? Column + TabWidth - Column % TabWidth : Column + 1;
-      Column += Style.IndentWidth;
-      Indent = std::string(Column / TabWidth, '\t') +
-               std::string(Column % TabWidth, ' ');
-    }
-    queueReplacement(Pending, Code, BeginOffset, EndOffset, std::move(Indent),
+    queueReplacement(Pending, Code, BeginOffset, EndOffset,
+                     buildIndentText(BlockIndent, Style.IndentWidth, Style),
                      "IndentAttributedLabels");
   }
 }

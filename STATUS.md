@@ -85,19 +85,20 @@ Code review against upstream clang-format behavior found and fixed:
   `BreakAdjacentStringLiterals`;
 - `BlankLineBeforeReturn` separating a return from a braceless control header,
   a switch label, or an opening brace, and splitting it from its comment;
-- `BlankLinesAroundControlStatements` deleting trailing comments.
+- `BlankLinesAroundControlStatements` deleting trailing comments;
+- nested-aggregate expansion hardcoding four-space indentation, ignoring
+  `UseTab`, merging an expanded aggregate into a short function, and treating
+  lambda bodies in call chains as aggregate levels.
 
 Each fix has a same-ID regression contract run by
 `tests/validate-complete-format.ps1`.
 
 Remaining review follow-ups:
 
-1. Make `ExpandNestedAggregateBraces` honor `IndentWidth`/`UseTab` and scope its
-   indentation hook to aggregates it expanded.
-2. Rename or split options whose names describe spacing but also change line
+1. Rename or split options whose names describe spacing but also change line
    breaks (`SpaceParameterPackEllipses`,
    `SpaceAnnotationsAndFunctionPointers`, `SpaceAfterParenthesizedSpecifiers`).
-3. Share one source scan between the structural and boundary post-format
+2. Share one source scan between the structural and boundary post-format
    passes and consolidate duplicated layout helpers.
 
 ## Remaining release work

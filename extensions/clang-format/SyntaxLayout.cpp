@@ -132,7 +132,8 @@ void expandNestedAggregate(AnnotatedLine &Line,
   bool SawBrace = false;
   for (const auto *Token = Line.First; Token; Token = Token->Next) {
     HasAssignment |= Token->is(tok::equal);
-    if (Token->is(tok::l_brace)) {
+    // Lambda bodies are not aggregate levels.
+    if (Token->is(tok::l_brace) && Token->isNot(TT_LambdaLBrace)) {
       ++BraceCount;
       if (!SawBrace) {
         MinimumBraceLevel = Token->NestingLevel;
@@ -151,6 +152,13 @@ void expandNestedAggregate(AnnotatedLine &Line,
     return;
   }
 
+  FormatToken *FirstForcedBreak = nullptr;
+  auto ForceBreakBefore = [&](FormatToken &Token) {
+    Token.MustBreakBefore = true;
+    Token.CanBreakBefore = true;
+    if (!FirstForcedBreak)
+      FirstForcedBreak = &Token;
+  };
   for (auto *Token = Line.First; Token; Token = Token->Next) {
     if (Token->is(tok::l_brace)) {
       const auto *Previous = Token->getPreviousNonComment();
@@ -158,23 +166,24 @@ void expandNestedAggregate(AnnotatedLine &Line,
       const bool StartsNestedLevel = Previous && Previous->is(tok::l_brace);
       const bool StartsOuterSibling = Previous && Previous->is(tok::comma) &&
                                       Token->NestingLevel < MaximumBraceLevel;
-      if (IsRoot || StartsNestedLevel || StartsOuterSibling) {
-        Token->MustBreakBefore = true;
-        Token->CanBreakBefore = true;
-      }
-      if (Token->Next && Token->Next->isNot(tok::r_brace)) {
-        Token->Next->MustBreakBefore = true;
-        Token->Next->CanBreakBefore = true;
-      }
+      if (IsRoot || StartsNestedLevel || StartsOuterSibling)
+        ForceBreakBefore(*Token);
+      if (Token->Next && Token->Next->isNot(tok::r_brace))
+        ForceBreakBefore(*Token->Next);
     } else if (Token->is(tok::r_brace) && Token->MatchingParen) {
-      Token->MustBreakBefore = true;
-      Token->CanBreakBefore = true;
+      ForceBreakBefore(*Token);
     } else if (Token->is(tok::comma) && Token->Next &&
                Token->NestingLevel > MaximumBraceLevel) {
       Token->Next->MustBreakBefore = false;
       Token->Next->NewlinesBefore = 0;
     }
   }
+
+  // TokenAnnotator computed TotalLength before these breaks were forced. Apply
+  // its forced-break length so LineJoiner cannot merge the expanded aggregate
+  // into a short function or block.
+  for (auto *Token = FirstForcedBreak; Token; Token = Token->Next)
+    Token->TotalLength += FormatStyle.ColumnLimit;
 }
 
 void breakRequiresExpression(AnnotatedLine &Line) {
