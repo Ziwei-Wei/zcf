@@ -190,6 +190,16 @@ $regressionContracts = [ordered]@{
     'nested-aggregate-tab-indentation' =
         '{BasedOnStyle: LLVM, IndentWidth: 4, TabWidth: 4, UseTab: ForIndentation, ZCFExtensions: {ExpandNestedAggregateBraces: true}}'
     'lambda-chain-is-not-aggregate' = "file:$StyleFile"
+    'spacing-options-preserve-layout' =
+        '{BasedOnStyle: LLVM, ZCFExtensions: {SpaceParameterPackEllipses: true, SpaceAnnotationsAndFunctionPointers: true, SpaceAfterParenthesizedSpecifiers: true}}'
+    'signature-pointer-and-explicit-parameters' =
+        '{BasedOnStyle: LLVM, ZCFExtensions: {ForceMultilineFunctionSignatures: true}}'
+    'pack-expansion-inheritance' =
+        '{BasedOnStyle: LLVM, ZCFExtensions: {BreakPackExpansionInheritance: true}}'
+    'separate-deleted-functions' =
+        '{BasedOnStyle: LLVM, ZCFExtensions: {SeparateDeletedFunctions: true}}'
+    'pack-indexed-function-brace' =
+        '{BasedOnStyle: LLVM, Standard: c++20, BreakBeforeBraces: Allman, ZCFExtensions: {WrapPackIndexedFunctionBraces: true}}'
 }
 foreach ($contract in $regressionContracts.GetEnumerator()) {
     $caseId = [string]$contract.Key
@@ -208,6 +218,19 @@ foreach ($contract in $regressionContracts.GetEnumerator()) {
     & $FormatterExe "-style=$style" -i $actualPath
     if ($LASTEXITCODE -ne 0 -or (Get-NormalizedText -Path $actualPath) -cne $firstPass) {
         throw "$caseId is not idempotent across two formatter passes."
+    }
+    $baselineStyle = $style -replace ', ZCFExtensions: \{[^}]*\}', ''
+    if ($baselineStyle -cne $style) {
+        $baselinePath = Join-Path $WorkDir "$caseId.baseline.cpp"
+        Copy-Item -LiteralPath (Join-Path $CaseDir "$caseId.input.cpp") `
+            -Destination $baselinePath
+        & $FormatterExe "-style=$baselineStyle" -i $baselinePath
+        if ($LASTEXITCODE -ne 0) {
+            throw "$caseId baseline formatting failed with exit code $LASTEXITCODE."
+        }
+        if ((Get-NormalizedText -Path $baselinePath) -ceq $firstPass) {
+            throw "$caseId has no observable extension effect."
+        }
     }
     Write-Host "PASS $caseId regression"
 }
@@ -418,6 +441,8 @@ $enabledPresetOptions = @(
     'ExpandNestedAggregateBraces',
     'BreakRequiresExpressionBraces',
     'SpaceParameterPackEllipses',
+    'BreakPackExpansionInheritance',
+    'WrapPackIndexedFunctionBraces',
     'SpaceAnnotationsAndFunctionPointers',
     'NormalizeIntegerLiteralCase',
     'BlankLinesAroundControlStatements',
@@ -425,6 +450,7 @@ $enabledPresetOptions = @(
     'DeindentQualifiedFunctionNames',
     'BreakRefQualifierRequires',
     'SpaceAfterParenthesizedSpecifiers',
+    'SeparateDeletedFunctions',
     'BlankLinesAroundLabels',
     'IndentAttributedLabels',
     'SeparateClosingDirectiveComments',

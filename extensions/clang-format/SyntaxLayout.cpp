@@ -98,6 +98,21 @@ void forceMultilineList(FormatToken &LeftParen) {
   RightParen->CanBreakBefore = true;
 }
 
+void forceBreakBefore(FormatToken &Token) {
+  Token.MustBreakBefore = true;
+  Token.CanBreakBefore = true;
+  Token.NewlinesBefore = std::max(Token.NewlinesBefore, 1u);
+}
+
+// TokenAnnotator computes TotalLength before extension hooks run. Adding its
+// forced-break length from the first newly forced token keeps the formatter's
+// single-line fast path and LineJoiner from discarding that break.
+void addForcedBreakLength(FormatToken &FirstForcedBreak,
+                          const FormatStyle &FormatStyle) {
+  for (auto *Token = &FirstForcedBreak; Token; Token = Token->Next)
+    Token->TotalLength += FormatStyle.ColumnLimit;
+}
+
 void breakConstructorDestructorSpecifier(AnnotatedLine &Line) {
   for (auto *Specifier = Line.First; Specifier; Specifier = Specifier->Next) {
     if (!Specifier->isOneOf(tok::kw_constexpr, tok::kw_consteval,
@@ -182,8 +197,8 @@ void expandNestedAggregate(AnnotatedLine &Line,
   // TokenAnnotator computed TotalLength before these breaks were forced. Apply
   // its forced-break length so LineJoiner cannot merge the expanded aggregate
   // into a short function or block.
-  for (auto *Token = FirstForcedBreak; Token; Token = Token->Next)
-    Token->TotalLength += FormatStyle.ColumnLimit;
+  if (FirstForcedBreak)
+    addForcedBreakLength(*FirstForcedBreak, FormatStyle);
 }
 
 void breakRequiresExpression(AnnotatedLine &Line) {
@@ -199,32 +214,6 @@ void breakRequiresExpression(AnnotatedLine &Line) {
         Token->MatchingParen->MustBreakBefore = true;
         Token->MatchingParen->CanBreakBefore = true;
       }
-    }
-  }
-}
-
-void completePackEllipsisLayout(AnnotatedLine &Line) {
-  bool HasPackIndex = false;
-  bool HasPackBase = false;
-  FormatToken *InheritanceColon = nullptr;
-  for (auto *Token = Line.First; Token; Token = Token->Next) {
-    if (Token->is(TT_InheritanceColon))
-      InheritanceColon = Token;
-    if (InheritanceColon && Token->is(tok::ellipsis))
-      HasPackBase = true;
-    HasPackIndex |= Token->is(tok::ellipsis) && Token->Next &&
-                    Token->Next->is(tok::l_square);
-  }
-  if (HasPackBase && InheritanceColon && InheritanceColon->Next) {
-    InheritanceColon->Next->MustBreakBefore = true;
-    InheritanceColon->Next->CanBreakBefore = true;
-  }
-  if (!HasPackIndex)
-    return;
-  for (auto *Token = Line.First; Token; Token = Token->Next) {
-    if (Token->is(tok::l_brace)) {
-      Token->MustBreakBefore = true;
-      Token->CanBreakBefore = true;
     }
   }
 }
@@ -300,12 +289,6 @@ bool rangeContainsArithmetic(const FormatToken &Begin, const FormatToken &End) {
   return false;
 }
 
-void forceBreakBefore(FormatToken &Token) {
-  Token.MustBreakBefore = true;
-  Token.CanBreakBefore = true;
-  Token.NewlinesBefore = std::max(Token.NewlinesBefore, 1u);
-}
-
 void forceLeadingOperatorBreak(FormatToken &Operator) {
   forceBreakBefore(Operator);
   if (Operator.Next && Operator.Next->isNot(tok::comment)) {
@@ -340,6 +323,80 @@ std::optional<unsigned> getFlattenedWidth(const FormatToken &Begin,
       return Width;
   }
   return std::nullopt;
+}
+
+void breakPackExpansionInheritance(AnnotatedLine &Line) {
+  FormatToken *InheritanceColon = nullptr;
+  for (auto *Token = Line.First; Token; Token = Token->Next) {
+    if (Token->is(TT_InheritanceColon)) {
+      InheritanceColon = Token;
+    } else if (InheritanceColon && InheritanceColon->Next &&
+               Token->is(tok::ellipsis)) {
+      InheritanceColon->Next->MustBreakBefore = true;
+      InheritanceColon->Next->CanBreakBefore = true;
+      return;
+    }
+  }
+}
+
+// LLVM 20 parses `-> Args...[Index] {` as a lambda introducer, so the function
+// body brace ignores BraceWrapping.AfterFunction. Restore that wrapping unless
+// the style would merge the whole short function onto one line.
+void wrapPackIndexedFunctionBrace(AnnotatedLine &Line,
+                                  const FormatStyle &FormatStyle) {
+  if (!FormatStyle.BraceWrapping.AfterFunction)
+    return;
+  const auto ShortFunctions = FormatStyle.AllowShortFunctionsOnASingleLine;
+  const bool MayMergeShortFunction =
+      ShortFunctions == FormatStyle::SFS_All ||
+      (Line.Level > 0 && (ShortFunctions == FormatStyle::SFS_Inline ||
+                          ShortFunctions == FormatStyle::SFS_InlineOnly));
+  const FormatToken *Arrow = nullptr;
+  bool SawPackIndex = false;
+  for (auto *Token = Line.First; Token; Token = Token->Next) {
+    if (!Arrow) {
+      if (Token->is(TT_TrailingReturnArrow))
+        Arrow = Token;
+      continue;
+    }
+    if (Token->NestingLevel != Arrow->NestingLevel)
+      continue;
+    if (Token->is(tok::ellipsis) && Token->Next &&
+        Token->Next->is(tok::l_square)) {
+      SawPackIndex = true;
+    } else if (Token->is(tok::l_brace)) {
+      if (!SawPackIndex)
+        return;
+      // Upstream merges a short function only when its header has no forced
+      // break and the merged line fits.
+      if (MayMergeShortFunction && Token->MatchingParen) {
+        bool HeaderBreaks = false;
+        for (const auto *Header = Line.First->Next; Header != Token;
+             Header = Header->Next) {
+          HeaderBreaks |= Header->MustBreakBefore;
+        }
+        const auto Width =
+            getFlattenedWidth(*Line.First, *Token->MatchingParen);
+        if (!HeaderBreaks && Width &&
+            Line.Level * FormatStyle.IndentWidth + *Width <=
+                FormatStyle.ColumnLimit) {
+          return;
+        }
+      }
+      // Lambda-brace rules such as BraceWrapping.BeforeLambdaBody would
+      // otherwise override the forced function-body break.
+      Token->overwriteFixedType(TT_FunctionLBrace);
+      forceBreakBefore(*Token);
+      for (AnnotatedLine *Child : Token->Children) {
+        if (Child && Child->First)
+          forceBreakBefore(*Child->First);
+      }
+      if (Token->MatchingParen)
+        forceBreakBefore(*Token->MatchingParen);
+      addForcedBreakLength(*Token, FormatStyle);
+      return;
+    }
+  }
 }
 
 void countStatementSemicolonsOnPhysicalLines(const AnnotatedLine &Line,
@@ -973,9 +1030,11 @@ void customizeSyntaxLayout(AnnotatedLine &Line,
     expandNestedAggregate(Line, FormatStyle);
   if (Style->BreakRequiresExpressionBraces)
     breakRequiresExpression(Line);
-  if (Style->SpaceParameterPackEllipses)
-    completePackEllipsisLayout(Line);
-  if (Style->SpaceAnnotationsAndFunctionPointers)
+  if (Style->BreakPackExpansionInheritance)
+    breakPackExpansionInheritance(Line);
+  if (Style->WrapPackIndexedFunctionBraces)
+    wrapPackIndexedFunctionBrace(Line, FormatStyle);
+  if (Style->ForceMultilineFunctionSignatures)
     breakFunctionPointerParameters(Line);
 }
 

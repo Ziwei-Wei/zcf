@@ -492,7 +492,7 @@ void collectClosingDirectiveCommentFixes(
   }
 }
 
-void collectDeletedDeclarationSeparationFixes(
+void collectDeletedFunctionSeparationFixes(
     const std::vector<TokenInfo> &Tokens,
     const std::vector<PhysicalLine> &Lines,
     AffectedRangeManager &AffectedRangeMgr, SourceLocation StartOfFile,
@@ -534,7 +534,7 @@ void collectDeletedDeclarationSeparationFixes(
       continue;
     queueReplacement(Pending, Code, BeginOffset, EndOffset,
                      buildLeadingWhitespace(Existing, 2, DefaultLineEnding),
-                     "SpaceAfterParenthesizedSpecifiers(separation)");
+                     "SeparateDeletedFunctions");
   }
 }
 
@@ -798,13 +798,12 @@ runBoundaryPostFormatPass(const Environment &Env, const FormatStyle &Style) {
       ExtensionStyle->SeparateSwitchCaseBlocks;
   const bool DeindentQualifiedFunctionNamesEnabled =
       ExtensionStyle->DeindentQualifiedFunctionNames;
-  const bool SpaceAfterParenthesizedSpecifiersEnabled =
-      ExtensionStyle->SpaceAfterParenthesizedSpecifiers;
+  const bool SeparateDeletedFunctionsEnabled =
+      ExtensionStyle->SeparateDeletedFunctions;
   if (!BlankLinesAroundLabelsEnabled && !IndentAttributedLabelsEnabled &&
       !SeparateClosingDirectiveCommentsEnabled &&
       !DeindentQualifiedFunctionNamesEnabled &&
-      !SpaceAfterParenthesizedSpecifiersEnabled &&
-      !SeparateSwitchCaseBlocksEnabled) {
+      !SeparateDeletedFunctionsEnabled && !SeparateSwitchCaseBlocksEnabled) {
     return {};
   }
 
@@ -951,10 +950,10 @@ runBoundaryPostFormatPass(const Environment &Env, const FormatStyle &Style) {
     collectClosingDirectiveCommentFixes(Tokens, Lines, AffectedRangeMgr,
                                         StartOfFile, Code, Pending);
   }
-  if (SpaceAfterParenthesizedSpecifiersEnabled) {
-    collectDeletedDeclarationSeparationFixes(Tokens, Lines, AffectedRangeMgr,
-                                             StartOfFile, Code,
-                                             DefaultLineEnding, Pending);
+  if (SeparateDeletedFunctionsEnabled) {
+    collectDeletedFunctionSeparationFixes(Tokens, Lines, AffectedRangeMgr,
+                                          StartOfFile, Code, DefaultLineEnding,
+                                          Pending);
   }
   if (DeindentQualifiedFunctionNamesEnabled) {
     collectQualifiedFunctionNameDeindentFixes(

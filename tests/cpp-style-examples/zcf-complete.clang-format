@@ -161,6 +161,8 @@ ZCFExtensions:
   ExpandNestedAggregateBraces: true
   BreakRequiresExpressionBraces: true
   SpaceParameterPackEllipses: true
+  BreakPackExpansionInheritance: true
+  WrapPackIndexedFunctionBraces: true
   SpaceAnnotationsAndFunctionPointers: true
   NormalizeIntegerLiteralCase: true
   BlankLinesAroundControlStatements: true
@@ -168,6 +170,7 @@ ZCFExtensions:
   DeindentQualifiedFunctionNames: true
   BreakRefQualifierRequires: true
   SpaceAfterParenthesizedSpecifiers: true
+  SeparateDeletedFunctions: true
   BlankLinesAroundLabels: true
   IndentAttributedLabels: true
   SeparateClosingDirectiveComments: true

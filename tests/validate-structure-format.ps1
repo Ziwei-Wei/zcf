@@ -125,6 +125,8 @@ foreach ($option in @(
     'ExpandNestedAggregateBraces',
     'BreakRequiresExpressionBraces',
     'SpaceParameterPackEllipses',
+    'BreakPackExpansionInheritance',
+    'WrapPackIndexedFunctionBraces',
     'SpaceAnnotationsAndFunctionPointers',
     'NormalizeIntegerLiteralCase',
     'BlankLinesAroundControlStatements',

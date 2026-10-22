@@ -5,7 +5,7 @@ Last updated: 2026-10-08
 ## Complete
 
 - `zcf` is a single clang-format-compatible native executable.
-- The reviewed C++ policy provides 26 independently configurable extensions.
+- The reviewed C++ policy provides 29 independently configurable extensions.
 - Upstream LLVM 20.1.8 remains pinned and pristine behind a generated overlay.
 - `pipx install zcf` packages the native executable and exposes:
   - `zcf`
@@ -88,17 +88,28 @@ Code review against upstream clang-format behavior found and fixed:
 - `BlankLinesAroundControlStatements` deleting trailing comments;
 - nested-aggregate expansion hardcoding four-space indentation, ignoring
   `UseTab`, merging an expanded aggregate into a short function, and treating
-  lambda bodies in call chains as aggregate levels.
+  lambda bodies in call chains as aggregate levels;
+- spacing options that also changed line breaks. `SpaceParameterPackEllipses`,
+  `SpaceAnnotationsAndFunctionPointers`, and
+  `SpaceAfterParenthesizedSpecifiers` now change spacing only. Function-pointer
+  and `explicit(bool)` parameter breaking moved to
+  `ForceMultilineFunctionSignatures`. Three narrow options cover the rest:
+  `BreakPackExpansionInheritance`, `SeparateDeletedFunctions`, and
+  `WrapPackIndexedFunctionBraces`. The last one restores function-brace
+  wrapping that LLVM 20 loses when it misparses a C++26 pack-indexed trailing
+  return type as a lambda. A brace rule that previously broke every brace on a
+  line containing pack indexing was removed.
 
 Each fix has a same-ID regression contract run by
 `tests/validate-complete-format.ps1`.
 
-Remaining review follow-ups:
+Known upstream limitation: LLVM 20 can also join the declaration following a
+pack-indexed function onto its closing-brace line. That parser defect is
+outside the extension layer.
 
-1. Rename or split options whose names describe spacing but also change line
-   breaks (`SpaceParameterPackEllipses`,
-   `SpaceAnnotationsAndFunctionPointers`, `SpaceAfterParenthesizedSpecifiers`).
-2. Share one source scan between the structural and boundary post-format
+Remaining review follow-up:
+
+1. Share one source scan between the structural and boundary post-format
    passes and consolidate duplicated layout helpers.
 
 ## Remaining release work

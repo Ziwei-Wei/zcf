@@ -125,7 +125,7 @@ void customizeDeclarationLayout(AnnotatedLine &Line) {
 
   if (Style->DeindentQualifiedFunctionNames)
     forceQualifiedFunctionParameters(Line);
-  if (Style->SpaceAfterParenthesizedSpecifiers)
+  if (Style->ForceMultilineFunctionSignatures)
     forceExplicitConstructorParameters(Line);
 }
 
