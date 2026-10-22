@@ -1,0 +1,38 @@
+// Every ZCF extension option, in configuration and dump-config order.
+// Each entry expands as ZCF_EXTENSION_OPTION(Name).
+
+#ifndef ZCF_EXTENSION_OPTION
+#error "Define ZCF_EXTENSION_OPTION before including ExtensionOptions.def"
+#endif
+
+ZCF_EXTENSION_OPTION(ArgumentIndentedClosingParentheses)
+ZCF_EXTENSION_OPTION(ForceMultilineFunctionSignatures)
+ZCF_EXTENSION_OPTION(ContextSensitiveBracedInitializers)
+ZCF_EXTENSION_OPTION(BlankLineBeforeReturn)
+ZCF_EXTENSION_OPTION(BreakConstructorDestructorSpecifiers)
+ZCF_EXTENSION_OPTION(CompactSingleArgumentCalls)
+ZCF_EXTENSION_OPTION(ExpandNestedAggregateBraces)
+ZCF_EXTENSION_OPTION(BreakRequiresExpressionBraces)
+ZCF_EXTENSION_OPTION(SpaceParameterPackEllipses)
+ZCF_EXTENSION_OPTION(BreakPackExpansionInheritance)
+ZCF_EXTENSION_OPTION(WrapPackIndexedFunctionBraces)
+ZCF_EXTENSION_OPTION(SpaceAnnotationsAndFunctionPointers)
+ZCF_EXTENSION_OPTION(NormalizeIntegerLiteralCase)
+ZCF_EXTENSION_OPTION(BlankLinesAroundControlStatements)
+ZCF_EXTENSION_OPTION(AlignMacrosAcrossDirectives)
+ZCF_EXTENSION_OPTION(DeindentQualifiedFunctionNames)
+ZCF_EXTENSION_OPTION(BreakRefQualifierRequires)
+ZCF_EXTENSION_OPTION(SpaceAfterParenthesizedSpecifiers)
+ZCF_EXTENSION_OPTION(SeparateDeletedFunctions)
+ZCF_EXTENSION_OPTION(BlankLinesAroundLabels)
+ZCF_EXTENSION_OPTION(IndentAttributedLabels)
+ZCF_EXTENSION_OPTION(SeparateClosingDirectiveComments)
+ZCF_EXTENSION_OPTION(ProgressiveCallExpansion)
+ZCF_EXTENSION_OPTION(ProgressiveArithmeticExpansion)
+ZCF_EXTENSION_OPTION(CompactTwoOperandExpressions)
+ZCF_EXTENSION_OPTION(BodyDrivenLambdaExpansion)
+ZCF_EXTENSION_OPTION(VerticalTernaryExpressions)
+ZCF_EXTENSION_OPTION(SeparateSwitchCaseBlocks)
+ZCF_EXTENSION_OPTION(ScopeStyleNestedTemplates)
+
+#undef ZCF_EXTENSION_OPTION

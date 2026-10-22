@@ -1,11 +1,11 @@
 # zcf implementation status
 
-Last updated: 2026-10-05
+Last updated: 2026-10-08
 
 ## Complete
 
 - `zcf` is a single clang-format-compatible native executable.
-- The reviewed C++ policy provides 26 independently configurable extensions.
+- The reviewed C++ policy provides 29 independently configurable extensions.
 - Upstream LLVM 20.1.8 remains pinned and pristine behind a generated overlay.
 - `pipx install zcf` packages the native executable and exposes:
   - `zcf`
@@ -73,12 +73,54 @@ Current fix:
   installation, `zcf activate`, custom-policy formatting, uninstall, and
   artifact-upload tests.
 
+## Extension conflict fixes
+
+Code review against upstream clang-format behavior found and fixed:
+
+- attributed labels indented by raw brace depth, which counted namespace braces
+  and ignored `UseTab`;
+- qualified-name continuation dedenting template and parameter arguments to
+  column 0;
+- call compaction joining adjacent string literals despite
+  `BreakAdjacentStringLiterals`;
+- `BlankLineBeforeReturn` separating a return from a braceless control header,
+  a switch label, or an opening brace, and splitting it from its comment;
+- `BlankLinesAroundControlStatements` deleting trailing comments;
+- nested-aggregate expansion hardcoding four-space indentation, ignoring
+  `UseTab`, merging an expanded aggregate into a short function, and treating
+  lambda bodies in call chains as aggregate levels;
+- spacing options that also changed line breaks. `SpaceParameterPackEllipses`,
+  `SpaceAnnotationsAndFunctionPointers`, and
+  `SpaceAfterParenthesizedSpecifiers` now change spacing only. Function-pointer
+  and `explicit(bool)` parameter breaking moved to
+  `ForceMultilineFunctionSignatures`. Three narrow options cover the rest:
+  `BreakPackExpansionInheritance`, `SeparateDeletedFunctions`, and
+  `WrapPackIndexedFunctionBraces`. The last one restores function-brace
+  wrapping that LLVM 20 loses when it misparses a C++26 pack-indexed trailing
+  return type as a lambda. A brace rule that previously broke every brace on a
+  line containing pack indexing was removed.
+
+Each fix has a same-ID regression contract run by
+`tests/validate-complete-format.ps1`.
+
+Known upstream limitation: LLVM 20 can also join the declaration following a
+pack-indexed function onto its closing-brace line. That parser defect is
+outside the extension layer.
+
+Post-format infrastructure was consolidated: one shared source scan and one
+replacement set (`PostFormatSource`) serve both the structural and boundary
+rules. Duplicated layout helpers were merged, which also fixed
+`ForceMultilineFunctionSignatures` leaving multiple parameters bin-packed on one
+line outside the preset (where `BinPackParameters: OnePerLine` had masked it).
+The 29 extension options are declared once in `ExtensionOptions.def`.
+
+All code-review follow-ups are complete.
+
 ## Remaining release work
 
-1. Merge [PR #1](https://github.com/Ziwei-Wei/zcf/pull/1).
-2. Register the repository's `pypi` environment as a PyPI trusted publisher.
-3. Push tag `v0.1.0`.
-4. Confirm public installation:
+1. Register the repository's `pypi` environment as a PyPI trusted publisher.
+2. Push tag `v0.1.0`.
+3. Confirm public installation:
 
    ```text
    pipx install zcf

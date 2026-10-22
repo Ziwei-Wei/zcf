@@ -80,15 +80,10 @@ void forceExplicitConstructorParameters(AnnotatedLine &Line) {
       continue;
     auto *Name = SpecifierParen->MatchingParen->getNextNonComment();
     auto *LeftParen = Name ? Name->getNextNonComment() : nullptr;
-    if (!Name || Name->isNot(tok::identifier) || !LeftParen ||
-        LeftParen->isNot(tok::l_paren) || !LeftParen->MatchingParen ||
-        !LeftParen->Next || LeftParen->Next == LeftParen->MatchingParen) {
-      continue;
+    if (Name && Name->is(tok::identifier) && LeftParen &&
+        isNonEmptyParen(*LeftParen)) {
+      forceMultilineList(*LeftParen);
     }
-    LeftParen->Next->MustBreakBefore = true;
-    LeftParen->Next->CanBreakBefore = true;
-    LeftParen->MatchingParen->MustBreakBefore = true;
-    LeftParen->MatchingParen->CanBreakBefore = true;
   }
 }
 
@@ -125,7 +120,7 @@ void customizeDeclarationLayout(AnnotatedLine &Line) {
 
   if (Style->DeindentQualifiedFunctionNames)
     forceQualifiedFunctionParameters(Line);
-  if (Style->SpaceAfterParenthesizedSpecifiers)
+  if (Style->ForceMultilineFunctionSignatures)
     forceExplicitConstructorParameters(Line);
 }
 
@@ -146,7 +141,7 @@ std::optional<unsigned> getDeclarationNewLineColumn(const LineState &State,
     return State.FirstIndent;
 
   if (Style->DeindentQualifiedFunctionNames && State.Line->Level == 0 &&
-      !containsAssignment(*State.Line) &&
+      State.NextToken->NestingLevel == 0 && !containsAssignment(*State.Line) &&
       isQualifiedFunctionComponent(*State.NextToken))
     return State.FirstIndent;
 
