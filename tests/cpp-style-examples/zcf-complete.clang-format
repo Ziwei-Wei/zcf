@@ -168,7 +168,6 @@ ZCFExtensions:
   BlankLinesAroundControlStatements: true
   AlignMacrosAcrossDirectives: true
   DeindentQualifiedFunctionNames: true
-  BreakRefQualifierRequires: true
   SpaceAfterParenthesizedSpecifiers: true
   SeparateDeletedFunctions: true
   BlankLinesAroundLabels: true

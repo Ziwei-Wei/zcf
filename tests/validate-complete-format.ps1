@@ -52,7 +52,6 @@ if (-not (Test-Path -LiteralPath $CaseDir -PathType Container)) {
 
 $caseIds = @(
     'qualified-function-name-continuation-indent',
-    'ref-qualifier-requires-layout',
     'compound-requirement-arrow-spacing',
     'space-after-explicit',
     'blank-lines-around-labels',
@@ -61,7 +60,6 @@ $caseIds = @(
 )
 $optionCases = [ordered]@{
     DeindentQualifiedFunctionNames = 'qualified-function-name-continuation-indent'
-    BreakRefQualifierRequires = 'ref-qualifier-requires-layout'
     SpaceAfterParenthesizedSpecifiers = 'space-after-explicit'
     BlankLinesAroundLabels = 'blank-lines-around-labels'
     IndentAttributedLabels = 'attributed-label-indentation'
@@ -116,7 +114,6 @@ if ($LASTEXITCODE -ne 0) {
 }
 foreach ($option in @(
     'DeindentQualifiedFunctionNames',
-    'BreakRefQualifierRequires',
     'SpaceAfterParenthesizedSpecifiers',
     'BlankLinesAroundLabels',
     'IndentAttributedLabels',
@@ -460,7 +457,6 @@ $enabledPresetOptions = @(
     'BlankLinesAroundControlStatements',
     'AlignMacrosAcrossDirectives',
     'DeindentQualifiedFunctionNames',
-    'BreakRefQualifierRequires',
     'SpaceAfterParenthesizedSpecifiers',
     'SeparateDeletedFunctions',
     'BlankLinesAroundLabels',
@@ -1015,33 +1011,6 @@ if (-not [System.IO.File]::ReadAllText($attributedLabelContextInput).Contains(
 }
 Write-Host 'PASS attributed-label context indentation'
 
-$noexceptRequiresInput = Join-Path $WorkDir 'ref-noexcept-requires.cpp'
-[System.IO.File]::WriteAllText(
-    $noexceptRequiresInput,
-    @'
-template <typename T>
-struct Value
-{
-    auto get() & noexcept requires(sizeof(T) > 0)
-    {
-        return T{};
-    }
-};
-'@,
-    [System.Text.UTF8Encoding]::new($false)
-)
-& $FormatterExe "-style=file:$StyleFile" -i $noexceptRequiresInput
-if ($LASTEXITCODE -ne 0) {
-    throw "Ref/noexcept/requires formatting failed with exit code $LASTEXITCODE."
-}
-$noexceptRequiresText = [System.IO.File]::ReadAllText($noexceptRequiresInput)
-if (-not $noexceptRequiresText.Contains(
-    "& noexcept requires(sizeof(T) > 0)"
-)) {
-    throw 'Ref-qualifier policy split noexcept from its trailing requires clause.'
-}
-Write-Host 'PASS ref/noexcept/requires grouping'
-
 $canonicalActual = Join-Path $WorkDir 'canonical.actual.cpp'
 Copy-Item -LiteralPath $CanonicalFixture -Destination $canonicalActual
 & $FormatterExe "-style=file:$StyleFile" -i $canonicalActual
@@ -1059,4 +1028,4 @@ if ($canonicalFirstHash -cne $canonicalSecondHash) {
 }
 Write-Host 'PASS canonical complete-policy idempotence'
 
-Write-Host "Validated 6 specialized extension contracts, 4 reviewed preset contracts, $($regressionContracts.Count) regression contracts, and 1 reviewed native contract."
+Write-Host "Validated $($optionCases.Count) specialized extension contracts, 4 reviewed preset contracts, $($regressionContracts.Count) regression contracts, and 1 reviewed native contract."

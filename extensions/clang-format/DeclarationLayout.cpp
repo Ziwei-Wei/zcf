@@ -8,14 +8,6 @@
 namespace clang::format::extensions {
 namespace {
 
-bool isFunctionRefQualifier(const FormatToken &Token) {
-  if (!Token.isOneOf(tok::amp, tok::ampamp))
-    return false;
-  const auto *Previous = Token.getPreviousNonComment();
-  return Previous && Previous->is(tok::r_paren) && Previous->MatchingParen &&
-         Previous->MatchingParen->is(TT_FunctionDeclarationLParen);
-}
-
 bool isQualifiedFunctionComponent(const FormatToken &Token) {
   const auto *Next = Token.getNextNonComment();
   const auto *Previous = Token.getPreviousNonComment();
@@ -99,30 +91,6 @@ void customizeDeclarationLayout(AnnotatedLine &Line) {
   if (!Style)
     return;
 
-  if (Style->BreakRefQualifierRequires) {
-    for (auto *Token = Line.First; Token; Token = Token->Next) {
-      if (!isFunctionRefQualifier(*Token))
-        continue;
-      Token->MustBreakBefore = true;
-      Token->CanBreakBefore = true;
-      auto *Requires = Token->getNextNonComment();
-      if (Requires && Requires->is(tok::kw_noexcept)) {
-        Requires->MustBreakBefore = false;
-        Requires->CanBreakBefore = false;
-        Requires->NewlinesBefore = 0;
-        Requires = Requires->getNextNonComment();
-        if (Requires && Requires->is(tok::l_paren) && Requires->MatchingParen) {
-          Requires = Requires->MatchingParen->getNextNonComment();
-        }
-      }
-      if (Requires && Requires->isOneOf(TT_RequiresClause, tok::kw_requires)) {
-        Requires->MustBreakBefore = false;
-        Requires->CanBreakBefore = false;
-        Requires->NewlinesBefore = 0;
-      }
-    }
-  }
-
   if (Style->ForceMultilineFunctionSignatures) {
     forceExplicitConstructorParameters(Line);
     if (auto *LeftParen = findCommentSplitQualifiedParameterParen(Line))
@@ -141,10 +109,6 @@ std::optional<unsigned> getDeclarationNewLineColumn(const LineState &State,
       isExplicitConstructorParameterParen(*State.NextToken->MatchingParen)) {
     return State.Stack.back().Indent;
   }
-
-  if (Style->BreakRefQualifierRequires &&
-      isFunctionRefQualifier(*State.NextToken))
-    return State.FirstIndent;
 
   if (Style->DeindentQualifiedFunctionNames && State.Line->Level == 0 &&
       State.NextToken->NestingLevel == 0 && !containsAssignment(*State.Line) &&
