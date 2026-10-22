@@ -114,6 +114,11 @@ rules. Duplicated layout helpers were merged, which also fixed
 line outside the preset (where `BinPackParameters: OnePerLine` had masked it).
 The 29 extension options are declared once in `ExtensionOptions.def`.
 
+`DeindentQualifiedFunctionNames` now changes only qualified-name indentation.
+Parameter breaking for declarations whose qualified name is split by comments
+(which upstream does not recognize as declarations) belongs to
+`ForceMultilineFunctionSignatures`.
+
 All code-review follow-ups are complete.
 
 ## Remaining release work

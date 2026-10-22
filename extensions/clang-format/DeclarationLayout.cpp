@@ -50,24 +50,29 @@ bool isExplicitConstructorParameterParen(const FormatToken &LeftParen) {
   return Explicit && Explicit->is(tok::kw_explicit);
 }
 
-void forceQualifiedFunctionParameters(AnnotatedLine &Line) {
+// Upstream does not recognize a declaration whose qualified name is split by
+// comments, such as `ns:: // note` followed by `Type::name(...)`, so its
+// parameter list never receives TT_FunctionDeclarationLParen.
+FormatToken *findCommentSplitQualifiedParameterParen(AnnotatedLine &Line) {
   if (Line.Level != 0 || containsAssignment(Line))
-    return;
+    return nullptr;
+  bool SawComment = false;
   for (auto *Token = Line.First; Token; Token = Token->Next) {
-    if (!isQualifiedFunctionComponent(*Token))
+    if (Token->NestingLevel != 0)
       continue;
-    auto *LeftParen = Token->getNextNonComment();
-    if (!LeftParen || LeftParen->isNot(tok::l_paren) ||
-        !LeftParen->MatchingParen || !LeftParen->Next ||
-        LeftParen->Next == LeftParen->MatchingParen) {
-      return;
+    SawComment |= Token->is(tok::comment);
+    if (Token->isNot(tok::l_paren))
+      continue;
+    const auto *Name = Token->getPreviousNonComment();
+    const auto *Qualifier = Name ? Name->getPreviousNonComment() : nullptr;
+    if (!SawComment || Token->is(TT_FunctionDeclarationLParen) || !Name ||
+        Name->isNot(tok::identifier) || !Qualifier ||
+        Qualifier->isNot(tok::coloncolon)) {
+      return nullptr;
     }
-    LeftParen->Next->MustBreakBefore = true;
-    LeftParen->Next->CanBreakBefore = true;
-    LeftParen->MatchingParen->MustBreakBefore = true;
-    LeftParen->MatchingParen->CanBreakBefore = true;
-    return;
+    return isNonEmptyParen(*Token) ? Token : nullptr;
   }
+  return nullptr;
 }
 
 void forceExplicitConstructorParameters(AnnotatedLine &Line) {
@@ -118,10 +123,11 @@ void customizeDeclarationLayout(AnnotatedLine &Line) {
     }
   }
 
-  if (Style->DeindentQualifiedFunctionNames)
-    forceQualifiedFunctionParameters(Line);
-  if (Style->ForceMultilineFunctionSignatures)
+  if (Style->ForceMultilineFunctionSignatures) {
     forceExplicitConstructorParameters(Line);
+    if (auto *LeftParen = findCommentSplitQualifiedParameterParen(Line))
+      forceMultilineList(*LeftParen);
+  }
 }
 
 std::optional<unsigned> getDeclarationNewLineColumn(const LineState &State,
