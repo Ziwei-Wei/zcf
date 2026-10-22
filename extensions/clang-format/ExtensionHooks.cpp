@@ -1,25 +1,19 @@
 #include "integration/clang-format/ExtensionHooks.h"
 #include "extensions/clang-format/ExtensionPasses.h"
+#include "extensions/clang-format/PostFormatSource.h"
 #include "integration/clang-format/ExtensionContext.h"
 
 #include "ContinuationIndenter.h"
 #include "FormatToken.h"
+#include "TokenAnalyzer.h"
 #include "TokenAnnotator.h"
-
-#include "llvm/Support/Error.h"
-#include "llvm/Support/raw_ostream.h"
 
 namespace clang::format::extensions {
 namespace {
 
-bool isNonEmptyList(const FormatToken &LeftParen) {
-  return LeftParen.MatchingParen && LeftParen.Next &&
-         LeftParen.Next != LeftParen.MatchingParen;
-}
-
 bool isFunctionParameterParen(const FormatToken &LeftParen) {
   return LeftParen.is(TT_FunctionDeclarationLParen) &&
-         isNonEmptyList(LeftParen);
+         isNonEmptyParen(LeftParen);
 }
 
 bool isFunctionSignatureParen(const AnnotatedLine &Line,
@@ -27,28 +21,8 @@ bool isFunctionSignatureParen(const AnnotatedLine &Line,
   return Line.MightBeFunctionDecl && isFunctionParameterParen(LeftParen);
 }
 
-bool isFunctionCallParen(const AnnotatedLine &Line,
-                         const FormatToken &LeftParen) {
-  if (Line.InPPDirective || !isNonEmptyList(LeftParen) ||
-      LeftParen.isNot(tok::l_paren) ||
-      LeftParen.isOneOf(TT_AttributeLParen, TT_ConditionLParen,
-                        TT_FunctionDeclarationLParen, TT_FunctionTypeLParen,
-                        TT_LambdaDefinitionLParen,
-                        TT_OverloadedOperatorLParen)) {
-    return false;
-  }
-
-  const auto *Callee = LeftParen.getPreviousNonComment();
-  if (!Callee)
-    return false;
-  if (Line.MightBeFunctionDecl && LeftParen.MightBeFunctionDeclParen)
-    return false;
-  return Callee->isOneOf(tok::identifier, tok::r_paren, tok::r_square,
-                         TT_TemplateCloser);
-}
-
 bool isNamedParen(const FormatToken &LeftParen) {
-  if (!isNonEmptyList(LeftParen) || LeftParen.isNot(tok::l_paren) ||
+  if (!isNonEmptyParen(LeftParen) ||
       LeftParen.isOneOf(TT_AttributeLParen, TT_ConditionLParen,
                         TT_FunctionTypeLParen, TT_LambdaDefinitionLParen,
                         TT_OverloadedOperatorLParen)) {
@@ -58,26 +32,6 @@ bool isNamedParen(const FormatToken &LeftParen) {
   const auto *Name = LeftParen.getPreviousNonComment();
   return Name && Name->isOneOf(tok::identifier, tok::r_paren, tok::r_square,
                                TT_TemplateCloser);
-}
-
-void forceMultilineList(FormatToken &LeftParen) {
-  auto *RightParen = LeftParen.MatchingParen;
-  auto *Current = LeftParen.Next;
-  if (!RightParen || !Current || Current == RightParen)
-    return;
-
-  Current->MustBreakBefore = true;
-  Current->CanBreakBefore = true;
-  for (; Current && Current != RightParen; Current = Current->Next) {
-    if (Current->is(tok::comma) &&
-        Current->NestingLevel == LeftParen.NestingLevel && Current->Next &&
-        Current->Next != RightParen) {
-      Current->Next->MustBreakBefore = true;
-      Current->Next->CanBreakBefore = true;
-    }
-  }
-  RightParen->MustBreakBefore = true;
-  RightParen->CanBreakBefore = true;
 }
 
 void compactCallIfItFits(FormatToken &LeftParen,
@@ -136,8 +90,12 @@ void customizeAnnotatedLine(AnnotatedLine &Line,
     return;
 
   for (auto *Token = Line.First; Token; Token = Token->Next) {
-    if (Style->ProgressiveCallExpansion && isFunctionCallParen(Line, *Token))
+    // A declaration-like line can still contain a call, but its own parameter
+    // list is not one.
+    if (Style->ProgressiveCallExpansion && isCallParen(Line, *Token) &&
+        !(Line.MightBeFunctionDecl && Token->MightBeFunctionDeclParen)) {
       compactCallIfItFits(*Token, FormatStyle);
+    }
     if (Style->ForceMultilineFunctionSignatures &&
         isFunctionSignatureParen(Line, *Token)) {
       forceMultilineList(*Token);
@@ -185,17 +143,23 @@ getExtensionNewLineColumn(const LineState &State,
 
 std::pair<tooling::Replacements, unsigned>
 runExtensionPostFormatPass(const Environment &Env, const FormatStyle &Style) {
-  auto Result = runStructuralPostFormatPass(Env, Style);
-  auto Boundary = runBoundaryPostFormatPass(Env, Style);
-  for (const auto &Replacement : Boundary.first) {
-    if (auto Error = Result.first.add(Replacement)) {
-      llvm::errs()
-          << "Boundary post-format replacement conflicts with structural pass: "
-          << llvm::toString(std::move(Error)) << "\n";
-    }
+  const auto *Extensions = getActiveExtensionStyleConst();
+  if (!Extensions || !Extensions->anyEnabled() ||
+      Style.Language != FormatStyle::LK_Cpp) {
+    return {};
   }
-  Result.second += Boundary.second;
-  return Result;
+
+  // Both passes inspect the same LibFormat output, so they share one scan and
+  // one replacement set; overlapping edits are resolved in one place.
+  const PostFormatSource Source = scanPostFormatSource(Env, Style);
+  AffectedRangeManager AffectedRangeMgr(Env.getSourceManager(),
+                                        Env.getCharRanges());
+  std::vector<PendingReplacement> Pending;
+  collectStructuralFixes(Source, Style, *Extensions, AffectedRangeMgr, Pending);
+  collectBoundaryFixes(Source, Style, *Extensions, AffectedRangeMgr, Pending);
+  return {
+      buildReplacements(Pending, Env.getSourceManager(), Source.StartOfFile),
+      0};
 }
 
 } // namespace clang::format::extensions

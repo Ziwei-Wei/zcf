@@ -7,19 +7,22 @@
 
 #include <algorithm>
 #include <optional>
+#include <utility>
 
 namespace clang::format::extensions {
 namespace {
-
-bool isNonEmptyParen(const FormatToken &LeftParen) {
-  return LeftParen.is(tok::l_paren) && LeftParen.MatchingParen &&
-         LeftParen.Next && LeftParen.Next != LeftParen.MatchingParen;
-}
 
 bool hasCallCallee(const FormatToken &LeftParen) {
   const auto *Callee = LeftParen.getPreviousNonComment();
   return Callee && Callee->isOneOf(tok::identifier, tok::r_paren, tok::r_square,
                                    TT_TemplateCloser);
+}
+
+} // namespace
+
+bool isNonEmptyParen(const FormatToken &LeftParen) {
+  return LeftParen.is(tok::l_paren) && LeftParen.MatchingParen &&
+         LeftParen.Next && LeftParen.Next != LeftParen.MatchingParen;
 }
 
 bool isCallParen(const AnnotatedLine &Line, const FormatToken &LeftParen) {
@@ -34,6 +37,50 @@ bool isCallParen(const AnnotatedLine &Line, const FormatToken &LeftParen) {
 
   return hasCallCallee(LeftParen);
 }
+
+bool hasRequiredStringLiteralBreak(const FormatToken &LeftParen,
+                                   const FormatStyle &Style) {
+  if (!Style.BreakAdjacentStringLiterals)
+    return false;
+  for (const auto *Token = LeftParen.Next;
+       Token && Token != LeftParen.MatchingParen; Token = Token->Next) {
+    if (Token->isStringLiteral() && Token->Previous->isStringLiteral())
+      return true;
+  }
+  return false;
+}
+
+void forceBreakBefore(FormatToken &Token) {
+  Token.MustBreakBefore = true;
+  Token.CanBreakBefore = true;
+  Token.NewlinesBefore = std::max(Token.NewlinesBefore, 1u);
+}
+
+void forceMultilineList(FormatToken &LeftParen) {
+  auto *RightParen = LeftParen.MatchingParen;
+  if (!RightParen || !LeftParen.Next || LeftParen.Next == RightParen)
+    return;
+  LeftParen.Next->MustBreakBefore = true;
+  LeftParen.Next->CanBreakBefore = true;
+  for (auto *Token = LeftParen.Next; Token && Token != RightParen;
+       Token = Token->Next) {
+    if (Token->is(tok::comma) && Token->Next && Token->Next != RightParen &&
+        Token->NestingLevel == LeftParen.NestingLevel + 1) {
+      Token->Next->MustBreakBefore = true;
+      Token->Next->CanBreakBefore = true;
+    }
+  }
+  RightParen->MustBreakBefore = true;
+  RightParen->CanBreakBefore = true;
+}
+
+void addForcedBreakLength(FormatToken &FirstForcedBreak,
+                          const FormatStyle &FormatStyle) {
+  for (auto *Token = &FirstForcedBreak; Token; Token = Token->Next)
+    Token->TotalLength += FormatStyle.ColumnLimit;
+}
+
+namespace {
 
 const FormatToken *findEnclosingCallParen(const AnnotatedLine &Line,
                                           const FormatToken &Current) {
@@ -78,39 +125,6 @@ void compactSingleArgumentCall(FormatToken &LeftParen) {
     if (Token == RightParen)
       break;
   }
-}
-
-void forceMultilineList(FormatToken &LeftParen) {
-  auto *RightParen = LeftParen.MatchingParen;
-  if (!RightParen || !LeftParen.Next || LeftParen.Next == RightParen)
-    return;
-  LeftParen.Next->MustBreakBefore = true;
-  LeftParen.Next->CanBreakBefore = true;
-  for (auto *Token = LeftParen.Next; Token && Token != RightParen;
-       Token = Token->Next) {
-    if (Token->is(tok::comma) && Token->Next &&
-        Token->NestingLevel == LeftParen.NestingLevel + 1) {
-      Token->Next->MustBreakBefore = true;
-      Token->Next->CanBreakBefore = true;
-    }
-  }
-  RightParen->MustBreakBefore = true;
-  RightParen->CanBreakBefore = true;
-}
-
-void forceBreakBefore(FormatToken &Token) {
-  Token.MustBreakBefore = true;
-  Token.CanBreakBefore = true;
-  Token.NewlinesBefore = std::max(Token.NewlinesBefore, 1u);
-}
-
-// TokenAnnotator computes TotalLength before extension hooks run. Adding its
-// forced-break length from the first newly forced token keeps the formatter's
-// single-line fast path and LineJoiner from discarding that break.
-void addForcedBreakLength(FormatToken &FirstForcedBreak,
-                          const FormatStyle &FormatStyle) {
-  for (auto *Token = &FirstForcedBreak; Token; Token = Token->Next)
-    Token->TotalLength += FormatStyle.ColumnLimit;
 }
 
 void breakConstructorDestructorSpecifier(AnnotatedLine &Line) {
@@ -512,17 +526,18 @@ bool isTernaryRangeBoundary(const FormatToken &Token, unsigned NestingLevel) {
                        tok::l_brace, tok::r_brace);
 }
 
+// Expands outward from Operator to the nearest boundaries at its nesting level.
 std::pair<FormatToken *, FormatToken *>
-findTernaryRange(FormatToken &Question) {
-  auto *Begin = Question.Previous;
+findExpressionRange(FormatToken &Operator,
+                    bool (*IsBoundary)(const FormatToken &, unsigned)) {
+  auto *Begin = Operator.Previous;
   while (Begin && Begin->Previous &&
-         !isTernaryRangeBoundary(*Begin->Previous, Question.NestingLevel)) {
+         !IsBoundary(*Begin->Previous, Operator.NestingLevel)) {
     Begin = Begin->Previous;
   }
 
-  auto *End = Question.Next;
-  while (End && End->Next &&
-         !isTernaryRangeBoundary(*End->Next, Question.NestingLevel)) {
+  auto *End = Operator.Next;
+  while (End && End->Next && !IsBoundary(*End->Next, Operator.NestingLevel)) {
     End = End->Next;
   }
   return {Begin, End};
@@ -556,7 +571,7 @@ void expandOverflowingTernaries(AnnotatedLine &Line,
       continue;
     }
 
-    auto [Begin, End] = findTernaryRange(*Question);
+    auto [Begin, End] = findExpressionRange(*Question, isTernaryRangeBoundary);
     if (!Begin || !End) {
       Question = Question->Next;
       continue;
@@ -732,22 +747,6 @@ bool isArithmeticRangeBoundary(const FormatToken &Token,
                        tok::r_brace);
 }
 
-std::pair<FormatToken *, FormatToken *>
-findArithmeticRange(FormatToken &Operator) {
-  auto *Begin = Operator.Previous;
-  while (Begin && Begin->Previous &&
-         !isArithmeticRangeBoundary(*Begin->Previous, Operator.NestingLevel)) {
-    Begin = Begin->Previous;
-  }
-
-  auto *End = Operator.Next;
-  while (End && End->Next &&
-         !isArithmeticRangeBoundary(*End->Next, Operator.NestingLevel)) {
-    End = End->Next;
-  }
-  return {Begin, End};
-}
-
 bool isSimpleTwoOperandRange(const FormatToken &Begin, const FormatToken &End,
                              const FormatToken &Operator) {
   unsigned ArithmeticOperators = 0;
@@ -776,7 +775,8 @@ void compactTwoOperandExpressions(AnnotatedLine &Line,
   for (auto *Operator = Line.First; Operator; Operator = Operator->Next) {
     if (!isArithmeticOperator(*Operator))
       continue;
-    auto [Begin, End] = findArithmeticRange(*Operator);
+    auto [Begin, End] =
+        findExpressionRange(*Operator, isArithmeticRangeBoundary);
     if (!Begin || !End || !isSimpleTwoOperandRange(*Begin, *End, *Operator)) {
       continue;
     }
@@ -984,18 +984,6 @@ bool isExpandedArithmeticCall(const FormatToken &LeftParen) {
 }
 
 } // namespace
-
-bool hasRequiredStringLiteralBreak(const FormatToken &LeftParen,
-                                   const FormatStyle &Style) {
-  if (!Style.BreakAdjacentStringLiterals)
-    return false;
-  for (const auto *Token = LeftParen.Next;
-       Token && Token != LeftParen.MatchingParen; Token = Token->Next) {
-    if (Token->isStringLiteral() && Token->Previous->isStringLiteral())
-      return true;
-  }
-  return false;
-}
 
 void customizeSyntaxLayout(AnnotatedLine &Line,
                            const FormatStyle &FormatStyle) {

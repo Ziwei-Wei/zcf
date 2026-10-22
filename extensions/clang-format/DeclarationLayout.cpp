@@ -80,15 +80,10 @@ void forceExplicitConstructorParameters(AnnotatedLine &Line) {
       continue;
     auto *Name = SpecifierParen->MatchingParen->getNextNonComment();
     auto *LeftParen = Name ? Name->getNextNonComment() : nullptr;
-    if (!Name || Name->isNot(tok::identifier) || !LeftParen ||
-        LeftParen->isNot(tok::l_paren) || !LeftParen->MatchingParen ||
-        !LeftParen->Next || LeftParen->Next == LeftParen->MatchingParen) {
-      continue;
+    if (Name && Name->is(tok::identifier) && LeftParen &&
+        isNonEmptyParen(*LeftParen)) {
+      forceMultilineList(*LeftParen);
     }
-    LeftParen->Next->MustBreakBefore = true;
-    LeftParen->Next->CanBreakBefore = true;
-    LeftParen->MatchingParen->MustBreakBefore = true;
-    LeftParen->MatchingParen->CanBreakBefore = true;
   }
 }
 

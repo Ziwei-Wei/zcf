@@ -107,10 +107,14 @@ Known upstream limitation: LLVM 20 can also join the declaration following a
 pack-indexed function onto its closing-brace line. That parser defect is
 outside the extension layer.
 
-Remaining review follow-up:
+Post-format infrastructure was consolidated: one shared source scan and one
+replacement set (`PostFormatSource`) serve both the structural and boundary
+rules. Duplicated layout helpers were merged, which also fixed
+`ForceMultilineFunctionSignatures` leaving multiple parameters bin-packed on one
+line outside the preset (where `BinPackParameters: OnePerLine` had masked it).
+The 29 extension options are declared once in `ExtensionOptions.def`.
 
-1. Share one source scan between the structural and boundary post-format
-   passes and consolidate duplicated layout helpers.
+All code-review follow-ups are complete.
 
 ## Remaining release work
 
