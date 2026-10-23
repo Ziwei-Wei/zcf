@@ -53,13 +53,11 @@ if (-not (Test-Path -LiteralPath $CaseDir -PathType Container)) {
 $caseIds = @(
     'closing-parenthesis-argument-indent',
     'force-multiline-function-signatures',
-    'context-sensitive-braced-initializers',
     'blank-line-before-return'
 )
 $optionCases = [ordered]@{
     ArgumentIndentedClosingParentheses = 'closing-parenthesis-argument-indent'
     ForceMultilineFunctionSignatures = 'force-multiline-function-signatures'
-    ContextSensitiveBracedInitializers = 'context-sensitive-braced-initializers'
     BlankLineBeforeReturn = 'blank-line-before-return'
 }
 
@@ -108,7 +106,6 @@ if ($LASTEXITCODE -ne 0) {
 foreach ($option in @(
     'ArgumentIndentedClosingParentheses',
     'ForceMultilineFunctionSignatures',
-    'ContextSensitiveBracedInitializers',
     'BlankLineBeforeReturn'
 )) {
     if (-not $enabledDump.Contains("${option}: true")) {

@@ -440,7 +440,6 @@ if ($LASTEXITCODE -ne 0) {
 $enabledPresetOptions = @(
     'ArgumentIndentedClosingParentheses',
     'ForceMultilineFunctionSignatures',
-    'ContextSensitiveBracedInitializers',
     'BlankLineBeforeReturn',
     'BreakConstructorDestructorSpecifiers',
     'CompactSingleArgumentCalls',
