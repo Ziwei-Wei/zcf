@@ -114,9 +114,7 @@ std::optional<bool> getSpaceRequiredBefore(const AnnotatedLine &Line,
       Right.is(BK_BracedInit) && isCtorMemberBracedInitializer(Line, Right)) {
     return false;
   }
-  if (auto Required = getDeclaratorSpaceRequiredBefore(Line, Right))
-    return Required;
-  return getSpecifierSpaceRequiredBefore(Line, Right);
+  return std::nullopt;
 }
 
 std::optional<unsigned>

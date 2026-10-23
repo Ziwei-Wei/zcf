@@ -162,7 +162,6 @@ ZCFExtensions:
   BreakRequiresExpressionBraces: true
   BreakPackExpansionInheritance: true
   WrapPackIndexedFunctionBraces: true
-  SpaceAnnotationsAndFunctionPointers: true
   NormalizeIntegerLiteralCase: true
   BlankLinesAroundControlStatements: true
   AlignMacrosAcrossDirectives: true

@@ -94,7 +94,7 @@ clang-format -style=file file.cpp
 
 The reviewed C++ policy uses `ColumnLimit: 140`, leading binary operators, no
 consecutive assignment alignment, right-aligned scalar matrices, progressive
-call and arithmetic expansion, and 27 independently configurable extensions.
+call and arithmetic expansion, and 25 independently configurable extensions.
 
 ## Build from source
 

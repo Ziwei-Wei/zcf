@@ -56,7 +56,7 @@ $caseIds = @(
     'nested-aggregate-brace-expansion',
     'requires-expression-brace-layout',
     'parameter-pack-layout',
-    'annotation-function-pointer-spacing',
+    'annotated-function-pointer-typedef',
     'integer-literal-case-normalization',
     'blank-lines-around-control-statements',
     'cross-directive-macro-alignment'
@@ -66,7 +66,6 @@ $optionCases = [ordered]@{
     CompactSingleArgumentCalls = 'single-argument-call-compaction'
     ExpandNestedAggregateBraces = 'nested-aggregate-brace-expansion'
     BreakRequiresExpressionBraces = 'requires-expression-brace-layout'
-    SpaceAnnotationsAndFunctionPointers = 'annotation-function-pointer-spacing'
     NormalizeIntegerLiteralCase = 'integer-literal-case-normalization'
     BlankLinesAroundControlStatements = 'blank-lines-around-control-statements'
     AlignMacrosAcrossDirectives = 'cross-directive-macro-alignment'
@@ -125,7 +124,6 @@ foreach ($option in @(
     'BreakRequiresExpressionBraces',
     'BreakPackExpansionInheritance',
     'WrapPackIndexedFunctionBraces',
-    'SpaceAnnotationsAndFunctionPointers',
     'NormalizeIntegerLiteralCase',
     'BlankLinesAroundControlStatements',
     'AlignMacrosAcrossDirectives'

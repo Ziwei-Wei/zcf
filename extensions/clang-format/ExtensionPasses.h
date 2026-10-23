@@ -15,11 +15,6 @@ namespace extensions {
 void customizeSyntaxLayout(AnnotatedLine &Line, const FormatStyle &Style);
 void customizeDeclarationLayout(AnnotatedLine &Line);
 
-std::optional<bool> getDeclaratorSpaceRequiredBefore(const AnnotatedLine &Line,
-                                                     const FormatToken &Right);
-std::optional<bool> getSpecifierSpaceRequiredBefore(const AnnotatedLine &Line,
-                                                    const FormatToken &Right);
-
 std::optional<unsigned> getSyntaxNewLineColumn(const LineState &State,
                                                const FormatStyle &Style);
 std::optional<unsigned> getDeclarationNewLineColumn(const LineState &State,
