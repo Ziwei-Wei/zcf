@@ -102,7 +102,7 @@ void customizeAnnotatedLine(AnnotatedLine &Line,
     }
   }
   customizeSyntaxLayout(Line, FormatStyle);
-  customizeDeclarationLayout(Line);
+  customizeDeclarationLayout(Line, FormatStyle);
 }
 
 std::optional<bool> getSpaceRequiredBefore(const AnnotatedLine &Line,

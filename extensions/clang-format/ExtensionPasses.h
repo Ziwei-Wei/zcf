@@ -13,7 +13,7 @@ struct LineState;
 namespace extensions {
 
 void customizeSyntaxLayout(AnnotatedLine &Line, const FormatStyle &Style);
-void customizeDeclarationLayout(AnnotatedLine &Line);
+void customizeDeclarationLayout(AnnotatedLine &Line, const FormatStyle &Style);
 
 std::optional<bool> getDeclaratorSpaceRequiredBefore(const AnnotatedLine &Line,
                                                      const FormatToken &Right);
