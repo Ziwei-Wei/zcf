@@ -55,7 +55,7 @@ $caseIds = @(
     'single-argument-call-compaction',
     'nested-aggregate-brace-expansion',
     'requires-expression-brace-layout',
-    'parameter-pack-ellipsis-spacing',
+    'parameter-pack-layout',
     'annotation-function-pointer-spacing',
     'integer-literal-case-normalization',
     'blank-lines-around-control-statements',
@@ -66,7 +66,6 @@ $optionCases = [ordered]@{
     CompactSingleArgumentCalls = 'single-argument-call-compaction'
     ExpandNestedAggregateBraces = 'nested-aggregate-brace-expansion'
     BreakRequiresExpressionBraces = 'requires-expression-brace-layout'
-    SpaceParameterPackEllipses = 'parameter-pack-ellipsis-spacing'
     SpaceAnnotationsAndFunctionPointers = 'annotation-function-pointer-spacing'
     NormalizeIntegerLiteralCase = 'integer-literal-case-normalization'
     BlankLinesAroundControlStatements = 'blank-lines-around-control-statements'
@@ -124,7 +123,6 @@ foreach ($option in @(
     'CompactSingleArgumentCalls',
     'ExpandNestedAggregateBraces',
     'BreakRequiresExpressionBraces',
-    'SpaceParameterPackEllipses',
     'BreakPackExpansionInheritance',
     'WrapPackIndexedFunctionBraces',
     'SpaceAnnotationsAndFunctionPointers',
@@ -318,14 +316,14 @@ $inheritanceInput = Join-Path $WorkDir 'ordinary-inheritance.cpp'
     [System.Text.UTF8Encoding]::new($false)
 )
 $inheritanceStyle =
-    '{BasedOnStyle: LLVM, ZCFExtensions: {SpaceParameterPackEllipses: true}}'
+    '{BasedOnStyle: LLVM, ZCFExtensions: {BreakPackExpansionInheritance: true}}'
 & $FormatterExe "-style=$inheritanceStyle" -i $inheritanceInput
 if ($LASTEXITCODE -ne 0) {
     throw "Ordinary inheritance isolation failed with exit code $LASTEXITCODE."
 }
 if ((Get-NormalizedText -Path $inheritanceInput) -cne
     'struct Derived : Base {};') {
-    throw 'Parameter-pack spacing changed ordinary inheritance layout.'
+    throw 'Pack-expansion inheritance breaking changed ordinary inheritance layout.'
 }
 Write-Host 'PASS ordinary inheritance isolation'
 

@@ -5,7 +5,7 @@ Last updated: 2026-10-08
 ## Complete
 
 - `zcf` is a single clang-format-compatible native executable.
-- The reviewed C++ policy provides 28 independently configurable extensions.
+- The reviewed C++ policy provides 27 independently configurable extensions.
 - Upstream LLVM 20.1.8 remains pinned and pristine behind a generated overlay.
 - `pipx install zcf` packages the native executable and exposes:
   - `zcf`
@@ -112,15 +112,16 @@ replacement set (`PostFormatSource`) serve both the structural and boundary
 rules. Duplicated layout helpers were merged, which also fixed
 `ForceMultilineFunctionSignatures` leaving multiple parameters bin-packed on one
 line outside the preset (where `BinPackParameters: OnePerLine` had masked it).
-The 28 extension options are declared once in `ExtensionOptions.def`.
+The 27 extension options are declared once in `ExtensionOptions.def`.
 
 `DeindentQualifiedFunctionNames` now changes only qualified-name indentation.
 Parameter breaking for declarations whose qualified name is split by comments
 (which upstream does not recognize as declarations) belongs to
 `ForceMultilineFunctionSignatures`.
 
-`BreakRefQualifierRequires` was removed from the policy; ref-qualified
-declarations now follow upstream layout.
+`BreakRefQualifierRequires` and `SpaceParameterPackEllipses` were removed from
+the policy; ref-qualified declarations and pack ellipses now follow upstream
+layout and spacing.
 
 All code-review follow-ups are complete.
 

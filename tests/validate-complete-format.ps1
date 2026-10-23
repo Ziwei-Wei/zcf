@@ -197,7 +197,7 @@ $regressionContracts = [ordered]@{
         '{BasedOnStyle: LLVM, IndentWidth: 4, TabWidth: 4, UseTab: ForIndentation, ZCFExtensions: {ExpandNestedAggregateBraces: true}}'
     'lambda-chain-is-not-aggregate' = "file:$StyleFile"
     'spacing-options-preserve-layout' =
-        '{BasedOnStyle: LLVM, ZCFExtensions: {SpaceParameterPackEllipses: true, SpaceAnnotationsAndFunctionPointers: true, SpaceAfterParenthesizedSpecifiers: true}}'
+        '{BasedOnStyle: LLVM, ZCFExtensions: {SpaceAnnotationsAndFunctionPointers: true, SpaceAfterParenthesizedSpecifiers: true}}'
     'signature-pointer-and-explicit-parameters' =
         '{BasedOnStyle: LLVM, ZCFExtensions: {ForceMultilineFunctionSignatures: true}}'
     'pack-expansion-inheritance' =
@@ -449,7 +449,6 @@ $enabledPresetOptions = @(
     'CompactSingleArgumentCalls',
     'ExpandNestedAggregateBraces',
     'BreakRequiresExpressionBraces',
-    'SpaceParameterPackEllipses',
     'BreakPackExpansionInheritance',
     'WrapPackIndexedFunctionBraces',
     'SpaceAnnotationsAndFunctionPointers',
@@ -904,14 +903,14 @@ $inheritanceInput = Join-Path $WorkDir 'ordinary-inheritance.cpp'
     [System.Text.UTF8Encoding]::new($false)
 )
 $inheritanceStyle =
-    '{BasedOnStyle: LLVM, ZCFExtensions: {SpaceParameterPackEllipses: true}}'
+    '{BasedOnStyle: LLVM, ZCFExtensions: {BreakPackExpansionInheritance: true}}'
 & $FormatterExe "-style=$inheritanceStyle" -i $inheritanceInput
 if ($LASTEXITCODE -ne 0) {
     throw "Ordinary inheritance isolation failed with exit code $LASTEXITCODE."
 }
 if ((Get-NormalizedText -Path $inheritanceInput) -cne
     'struct Derived : Base {};') {
-    throw 'Parameter-pack spacing changed ordinary inheritance layout.'
+    throw 'Pack-expansion inheritance breaking changed ordinary inheritance layout.'
 }
 Write-Host 'PASS ordinary inheritance isolation'
 

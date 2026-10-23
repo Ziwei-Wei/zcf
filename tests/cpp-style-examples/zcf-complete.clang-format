@@ -160,7 +160,6 @@ ZCFExtensions:
   CompactSingleArgumentCalls: true
   ExpandNestedAggregateBraces: true
   BreakRequiresExpressionBraces: true
-  SpaceParameterPackEllipses: true
   BreakPackExpansionInheritance: true
   WrapPackIndexedFunctionBraces: true
   SpaceAnnotationsAndFunctionPointers: true

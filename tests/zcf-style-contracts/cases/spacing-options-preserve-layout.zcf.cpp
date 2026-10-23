@@ -1,7 +1,7 @@
-template <typename ... Callables> struct Overload : Callables... {
-  using Callables::operator() ...;
+template <typename... Callables> struct Overload : Callables... {
+  using Callables::operator()...;
 };
-template <typename ... Ts> auto first() { return std::array{Ts ...[0]}; }
+template <typename... Ts> auto first() { return std::array{Ts...[0]}; }
 typedef Result (ZCF_STDCALL *Callback)(_In_reads_ (size) const void *data,
                                        int size);
 void (*plain)(int, int) = nullptr;

@@ -12,63 +12,6 @@ bool isDeclarationLikeLine(const AnnotatedLine &Line) {
          Line.startsWith(tok::kw_typedef);
 }
 
-bool isTemplateParameterPackEllipsis(const FormatToken &Right) {
-  if (!Right.Next || Right.Next->isNot(tok::identifier))
-    return false;
-
-  const auto &Left = *Right.Previous;
-  const auto *BeforeLeft = Left.getPreviousNonComment();
-  if (!BeforeLeft)
-    return false;
-
-  if (Left.isOneOf(tok::kw_typename, tok::kw_class, tok::kw_auto))
-    return BeforeLeft->isOneOf(tok::less, tok::comma, TT_TemplateOpener);
-
-  if (Left.is(tok::identifier))
-    return BeforeLeft->isOneOf(tok::less, tok::comma, TT_TemplateOpener);
-
-  if (!Left.is(TT_TemplateCloser) || !Left.MatchingParen)
-    return false;
-
-  const auto *Concept = Left.MatchingParen->getPreviousNonComment();
-  const auto *BeforeConcept =
-      Concept ? Concept->getPreviousNonComment() : nullptr;
-  return Concept && Concept->is(tok::identifier) && BeforeConcept &&
-         BeforeConcept->isOneOf(tok::less, tok::comma, TT_TemplateOpener);
-}
-
-bool isUsingOperatorPackEllipsis(const AnnotatedLine &Line,
-                                 const FormatToken &Right) {
-  const auto &Left = *Right.Previous;
-  return Line.startsWith(tok::kw_using) && Left.is(tok::r_paren) &&
-         Left.MatchingParen &&
-         Left.MatchingParen->is(TT_OverloadedOperatorLParen);
-}
-
-bool isVariadicFriendEllipsis(const AnnotatedLine &Line,
-                              const FormatToken &Right) {
-  const auto &Left = *Right.Previous;
-  return Line.startsWith(tok::kw_friend) && Right.Next &&
-         Right.Next->is(tok::semi) &&
-         Left.isOneOf(tok::identifier, TT_TemplateCloser);
-}
-
-bool isPackIndexExpressionEllipsis(const FormatToken &Right) {
-  if (!Right.Next || Right.Next->isNot(tok::l_square))
-    return false;
-
-  const auto &Left = *Right.Previous;
-  const auto *BeforeLeft = Left.getPreviousNonComment();
-  if (!BeforeLeft)
-    return false;
-
-  return BeforeLeft->isOneOf(tok::kw_return, tok::kw_co_return, tok::comma,
-                             tok::equal, tok::l_paren, tok::l_brace,
-                             tok::l_square, tok::question, tok::colon,
-                             tok::semi) ||
-         BeforeLeft->isUnaryOperator() || BeforeLeft->isBinaryOperator();
-}
-
 bool isGroupedPointerOrReferenceDeclarator(const FormatToken &LeftParen) {
   if (!LeftParen.is(tok::l_paren) || !LeftParen.MatchingParen ||
       LeftParen.Next == LeftParen.MatchingParen) {
@@ -153,20 +96,6 @@ std::optional<bool> getDeclaratorSpaceRequiredBefore(const AnnotatedLine &Line,
   const auto *Style = getActiveExtensionStyleConst();
   if (!Style || Line.InPPDirective || Line.InMacroBody || !Right.Previous)
     return std::nullopt;
-
-  if (Style->SpaceParameterPackEllipses && Right.is(tok::ellipsis)) {
-    if (isTemplateParameterPackEllipsis(Right) ||
-        isUsingOperatorPackEllipsis(Line, Right) ||
-        isPackIndexExpressionEllipsis(Right) ||
-        isVariadicFriendEllipsis(Line, Right)) {
-      return true;
-    }
-  }
-
-  if (Style->SpaceParameterPackEllipses && Right.is(tok::l_square) &&
-      Right.Previous->is(tok::ellipsis)) {
-    return false;
-  }
 
   if (Style->SpaceAnnotationsAndFunctionPointers && Right.is(tok::l_paren)) {
     if (needsFunctionPointerDeclaratorSpace(Line, Right) ||
