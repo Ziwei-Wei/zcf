@@ -117,7 +117,8 @@ The 24 extension options are declared once in `ExtensionOptions.def`.
 `DeindentQualifiedFunctionNames` now changes only qualified-name indentation.
 Parameter breaking for declarations whose qualified name is split by comments
 (which upstream does not recognize as declarations) belongs to
-`ForceMultilineFunctionSignatures`.
+`ForceMultilineFunctionSignatures`, which also applies the style's
+`BreakAfterReturnType` to them as upstream does for recognized declarations.
 
 `BreakRefQualifierRequires`, `ContextSensitiveBracedInitializers`, and the
 three spacing options (`SpaceParameterPackEllipses`,

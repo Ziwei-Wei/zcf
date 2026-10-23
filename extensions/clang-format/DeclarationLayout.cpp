@@ -67,6 +67,45 @@ FormatToken *findCommentSplitQualifiedParameterParen(AnnotatedLine &Line) {
   return nullptr;
 }
 
+// Applies upstream's BreakAfterReturnType decision, which LibFormat skips for
+// the comment-split declarations found above. The break goes before the first
+// qualified-name component, matching recognized qualified declarations.
+void breakAfterCommentSplitReturnType(AnnotatedLine &Line,
+                                      FormatToken &LeftParen,
+                                      const FormatStyle &FormatStyle) {
+  const bool IsDefinition = !Line.endsWith(tok::semi);
+  switch (FormatStyle.BreakAfterReturnType) {
+  case FormatStyle::RTBS_All:
+  case FormatStyle::RTBS_TopLevel:
+    break;
+  case FormatStyle::RTBS_AllDefinitions:
+  case FormatStyle::RTBS_TopLevelDefinitions:
+    if (!IsDefinition)
+      return;
+    break;
+  default:
+    return;
+  }
+
+  auto *NameStart = LeftParen.getPreviousNonComment();
+  while (auto *Qualifier = NameStart->getPreviousNonComment()) {
+    if (Qualifier->isNot(tok::coloncolon))
+      break;
+    auto *Scope = Qualifier->getPreviousNonComment();
+    if (Scope && Scope->is(TT_TemplateCloser) && Scope->MatchingParen)
+      Scope = Scope->MatchingParen->getPreviousNonComment();
+    if (!Scope || Scope->isNot(tok::identifier)) {
+      NameStart = Qualifier;
+      break;
+    }
+    NameStart = Scope;
+  }
+  if (NameStart == Line.First || NameStart->MustBreakBefore)
+    return;
+  forceBreakBefore(*NameStart);
+  addForcedBreakLength(*NameStart, FormatStyle);
+}
+
 void forceExplicitConstructorParameters(AnnotatedLine &Line) {
   for (auto *Explicit = Line.First; Explicit; Explicit = Explicit->Next) {
     if (Explicit->isNot(tok::kw_explicit))
@@ -86,15 +125,18 @@ void forceExplicitConstructorParameters(AnnotatedLine &Line) {
 
 } // namespace
 
-void customizeDeclarationLayout(AnnotatedLine &Line) {
+void customizeDeclarationLayout(AnnotatedLine &Line,
+                                const FormatStyle &FormatStyle) {
   const auto *Style = getActiveExtensionStyleConst();
   if (!Style)
     return;
 
   if (Style->ForceMultilineFunctionSignatures) {
     forceExplicitConstructorParameters(Line);
-    if (auto *LeftParen = findCommentSplitQualifiedParameterParen(Line))
+    if (auto *LeftParen = findCommentSplitQualifiedParameterParen(Line)) {
       forceMultilineList(*LeftParen);
+      breakAfterCommentSplitReturnType(Line, *LeftParen, FormatStyle);
+    }
   }
 }
 
