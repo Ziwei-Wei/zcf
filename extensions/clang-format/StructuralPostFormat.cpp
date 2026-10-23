@@ -217,12 +217,8 @@ void queueBlankLineBefore(const std::vector<TokenInfo> &Tokens,
                      Token.Offset, Token.EndOffset)) {
     return;
   }
-  const StringRef Existing = getExistingText(Code, BeginOffset, EndOffset);
-  if (countNewlines(Existing) < 2) {
-    queueReplacement(Pending, Code, BeginOffset, EndOffset,
-                     buildLeadingWhitespace(Existing, 2, DefaultLineEnding),
-                     Context);
-  }
+  queueSingleBlankLine(Pending, Code, BeginOffset, EndOffset, DefaultLineEnding,
+                       Context);
 }
 
 void collectIntegerLiteralFixes(const std::vector<TokenInfo> &Tokens,
