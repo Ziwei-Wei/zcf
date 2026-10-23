@@ -190,6 +190,9 @@ $regressionContracts = [ordered]@{
     'nested-aggregate-tab-indentation' =
         '{BasedOnStyle: LLVM, IndentWidth: 4, TabWidth: 4, UseTab: ForIndentation, ZCFExtensions: {ExpandNestedAggregateBraces: true}}'
     'lambda-chain-is-not-aggregate' = "file:$StyleFile"
+    'separation-collapses-extra-blank-lines' =
+        '{BasedOnStyle: ZCF, MaxEmptyLinesToKeep: 3}'
+    'separation-preserves-comments' = '{BasedOnStyle: ZCF}'
     'spacing-options-preserve-layout' =
         '{BasedOnStyle: LLVM, ZCFExtensions: {SpaceParameterPackEllipses: true, SpaceAnnotationsAndFunctionPointers: true, SpaceAfterParenthesizedSpecifiers: true}}'
     'signature-pointer-and-explicit-parameters' =

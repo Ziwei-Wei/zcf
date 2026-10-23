@@ -114,6 +114,12 @@ rules. Duplicated layout helpers were merged, which also fixed
 line outside the preset (where `BinPackParameters: OnePerLine` had masked it).
 The 29 extension options are declared once in `ExtensionOptions.def`.
 
+The blank-line separation rules (`BlankLineBeforeReturn`,
+`BlankLinesAroundControlStatements`, `BlankLinesAroundLabels`,
+`SeparateSwitchCaseBlocks`, and `SeparateDeletedFunctions`) produce exactly one
+blank line, collapsing extras even when `MaxEmptyLinesToKeep` allows more. They
+rewrite only whitespace between lines, so adjacent comments are preserved.
+
 All code-review follow-ups are complete.
 
 ## Remaining release work
