@@ -212,6 +212,9 @@ $regressionContracts = [ordered]@{
     'qualified-signature-parameters' =
         '{BasedOnStyle: LLVM, IndentWidth: 4, ZCFExtensions: {ForceMultilineFunctionSignatures: true}}'
     'qualified-name-deindent-only' = "file:$deindentOnlyStyle"
+    'qualified-return-type-break' = '{BasedOnStyle: ZCF}'
+    'qualified-return-type-definitions-only' =
+        '{BasedOnStyle: ZCF, BreakAfterReturnType: AllDefinitions}'
 }
 foreach ($contract in $regressionContracts.GetEnumerator()) {
     $caseId = [string]$contract.Key
