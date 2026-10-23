@@ -154,6 +154,5 @@ UseTab: Never
 ZCFExtensions:
   ArgumentIndentedClosingParentheses: true
   ForceMultilineFunctionSignatures: true
-  ContextSensitiveBracedInitializers: true
   BlankLineBeforeReturn: true
 ...

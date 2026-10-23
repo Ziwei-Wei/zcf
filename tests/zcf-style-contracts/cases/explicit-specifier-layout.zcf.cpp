@@ -1,7 +1,7 @@
 template <bool Strict>
 struct Flag
 {
-    explicit (Strict) Flag(
+    explicit(Strict) Flag(
         int value
         ):
         value(value)
@@ -9,7 +9,7 @@ struct Flag
     }
 
     void
-    reject() = delete ("reason");
+    reject() = delete("reason");
 
     int value;
 };
