@@ -177,6 +177,15 @@ foreach ($caseId in $caseIds) {
     Write-Host "PASS $caseId"
 }
 
+$deindentOnlyStyle = Join-Path $WorkDir 'deindent-only.clang-format'
+[System.IO.File]::WriteAllText(
+    $deindentOnlyStyle,
+    [System.IO.File]::ReadAllText($StyleFile).Replace(
+        '  ForceMultilineFunctionSignatures: true',
+        '  ForceMultilineFunctionSignatures: false'
+    ),
+    [System.Text.UTF8Encoding]::new($false)
+)
 $regressionContracts = [ordered]@{
     'attributed-label-namespace-indentation' = "file:$StyleFile"
     'qualified-name-nested-continuation' = "file:$StyleFile"
@@ -200,6 +209,12 @@ $regressionContracts = [ordered]@{
         '{BasedOnStyle: LLVM, ZCFExtensions: {SeparateDeletedFunctions: true}}'
     'pack-indexed-function-brace' =
         '{BasedOnStyle: LLVM, Standard: c++20, BreakBeforeBraces: Allman, ZCFExtensions: {WrapPackIndexedFunctionBraces: true}}'
+    'qualified-signature-parameters' =
+        '{BasedOnStyle: LLVM, IndentWidth: 4, ZCFExtensions: {ForceMultilineFunctionSignatures: true}}'
+    'qualified-name-deindent-only' = "file:$deindentOnlyStyle"
+    'qualified-return-type-break' = '{BasedOnStyle: ZCF}'
+    'qualified-return-type-definitions-only' =
+        '{BasedOnStyle: ZCF, BreakAfterReturnType: AllDefinitions}'
 }
 foreach ($contract in $regressionContracts.GetEnumerator()) {
     $caseId = [string]$contract.Key
