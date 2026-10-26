@@ -154,22 +154,17 @@ UseTab: Never
 ZCFExtensions:
   ArgumentIndentedClosingParentheses: true
   ForceMultilineFunctionSignatures: true
-  ContextSensitiveBracedInitializers: true
   BlankLineBeforeReturn: true
   BreakConstructorDestructorSpecifiers: true
   CompactSingleArgumentCalls: true
   ExpandNestedAggregateBraces: true
   BreakRequiresExpressionBraces: true
-  SpaceParameterPackEllipses: true
   BreakPackExpansionInheritance: true
   WrapPackIndexedFunctionBraces: true
-  SpaceAnnotationsAndFunctionPointers: true
   NormalizeIntegerLiteralCase: true
   BlankLinesAroundControlStatements: true
   AlignMacrosAcrossDirectives: true
   DeindentQualifiedFunctionNames: true
-  BreakRefQualifierRequires: true
-  SpaceAfterParenthesizedSpecifiers: true
   SeparateDeletedFunctions: true
   BlankLinesAroundLabels: true
   IndentAttributedLabels: true

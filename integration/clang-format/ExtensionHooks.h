@@ -27,8 +27,6 @@ void mapExtensionConfiguration(llvm::yaml::IO &IO,
                                FormatStyle::LanguageKind Language,
                                llvm::StringRef BasedOnStyle);
 void customizeAnnotatedLine(AnnotatedLine &Line, const FormatStyle &Style);
-std::optional<bool> getSpaceRequiredBefore(const AnnotatedLine &Line,
-                                           const FormatToken &Right);
 std::optional<unsigned> getExtensionNewLineColumn(const LineState &State,
                                                   const FormatStyle &Style);
 std::pair<tooling::Replacements, unsigned>
