@@ -166,6 +166,7 @@ ZCFExtensions:
   AlignMacrosAcrossDirectives: true
   DeindentQualifiedFunctionNames: true
   SeparateDeletedFunctions: true
+  SeparateDefinitionBlocksFromAll: true
   BlankLinesAroundLabels: true
   IndentAttributedLabels: true
   SeparateClosingDirectiveComments: true

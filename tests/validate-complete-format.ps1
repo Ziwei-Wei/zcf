@@ -120,7 +120,8 @@ foreach ($option in @(
     'BodyDrivenLambdaExpansion',
     'VerticalTernaryExpressions',
     'SeparateSwitchCaseBlocks',
-    'ScopeStyleNestedTemplates'
+    'ScopeStyleNestedTemplates',
+    'SeparateDefinitionBlocksFromAll'
 )) {
     if (-not $enabledDump.Contains("${option}: true")) {
         throw "Enabled dump-config did not preserve $option."
@@ -204,6 +205,8 @@ $regressionContracts = [ordered]@{
         '{BasedOnStyle: LLVM, ZCFExtensions: {BreakPackExpansionInheritance: true}}'
     'separate-deleted-functions' =
         '{BasedOnStyle: LLVM, ZCFExtensions: {SeparateDeletedFunctions: true}}'
+    'definition-separation-guards' =
+        '{BasedOnStyle: LLVM, ZCFExtensions: {SeparateDefinitionBlocksFromAll: true}}'
     'pack-indexed-function-brace' =
         '{BasedOnStyle: LLVM, Standard: c++20, BreakBeforeBraces: Allman, ZCFExtensions: {WrapPackIndexedFunctionBraces: true}}'
     'qualified-signature-parameters' =
@@ -322,6 +325,12 @@ $presetRuleContracts = @(
         Case = 'label-blank-line-separation'
         Input = Join-Path $CaseDir 'label-blank-line-separation.input.cpp'
         Expected = Join-Path $CaseDir 'label-blank-line-separation.zcf.cpp'
+    },
+    @{
+        Option = 'SeparateDefinitionBlocksFromAll'
+        Case = 'definition-block-separation'
+        Input = Join-Path $CaseDir 'definition-block-separation.input.cpp'
+        Expected = Join-Path $CaseDir 'definition-block-separation.zcf.cpp'
     },
     @{
         Option = 'ProgressiveCallExpansion'
@@ -470,6 +479,7 @@ $enabledPresetOptions = @(
     'AlignMacrosAcrossDirectives',
     'DeindentQualifiedFunctionNames',
     'SeparateDeletedFunctions',
+    'SeparateDefinitionBlocksFromAll',
     'BlankLinesAroundLabels',
     'IndentAttributedLabels',
     'SeparateClosingDirectiveComments',
