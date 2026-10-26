@@ -53,6 +53,7 @@ if (-not (Test-Path -LiteralPath $CaseDir -PathType Container)) {
 $caseIds = @(
     'break-constructor-destructor-specifiers',
     'single-argument-call-compaction',
+    'single-argument-call-author-breaks',
     'nested-aggregate-brace-expansion',
     'requires-expression-brace-layout',
     'parameter-pack-ellipsis-spacing',
@@ -63,7 +64,10 @@ $caseIds = @(
 )
 $optionCases = [ordered]@{
     BreakConstructorDestructorSpecifiers = 'break-constructor-destructor-specifiers'
-    CompactSingleArgumentCalls = 'single-argument-call-compaction'
+    CompactSingleArgumentCalls = @(
+        'single-argument-call-compaction',
+        'single-argument-call-author-breaks'
+    )
     ExpandNestedAggregateBraces = 'nested-aggregate-brace-expansion'
     BreakRequiresExpressionBraces = 'requires-expression-brace-layout'
     SpaceParameterPackEllipses = 'parameter-pack-ellipsis-spacing'
@@ -189,7 +193,6 @@ foreach ($caseId in $caseIds) {
 
 foreach ($entry in $optionCases.GetEnumerator()) {
     $option = [string]$entry.Key
-    $caseId = [string]$entry.Value
     $optionStyle = Join-Path $WorkDir "$option.disabled.clang-format"
     $styleText = [System.IO.File]::ReadAllText($StyleFile)
     $enabledSetting = "  ${option}: true"
@@ -202,24 +205,26 @@ foreach ($entry in $optionCases.GetEnumerator()) {
         [System.Text.UTF8Encoding]::new($false)
     )
 
-    $actualPath = Join-Path $WorkDir "$option.disabled.cpp"
-    $inputPath = Join-Path $CaseDir "$caseId.input.cpp"
-    $targetSuffix = if ($caseId -ceq 'nested-aggregate-brace-expansion') {
-        'reviewed.cpp'
-    } else {
-        'zcf.cpp'
+    foreach ($caseId in @($entry.Value)) {
+        $actualPath = Join-Path $WorkDir "$option.$caseId.disabled.cpp"
+        $inputPath = Join-Path $CaseDir "$caseId.input.cpp"
+        $targetSuffix = if ($caseId -ceq 'nested-aggregate-brace-expansion') {
+            'reviewed.cpp'
+        } else {
+            'zcf.cpp'
+        }
+        $targetPath = Join-Path $CaseDir "$caseId.$targetSuffix"
+        Copy-Item -LiteralPath $inputPath -Destination $actualPath
+        & $FormatterExe "-style=file:$optionStyle" -i $actualPath
+        if ($LASTEXITCODE -ne 0) {
+            throw "$option disabled-case formatting failed with exit code $LASTEXITCODE."
+        }
+        if ((Get-NormalizedText -Path $actualPath) -ceq
+            (Get-NormalizedText -Path $targetPath)) {
+            throw "$option has no independently observable effect in $caseId."
+        }
+        Write-Host "PASS $option option isolation in $caseId"
     }
-    $targetPath = Join-Path $CaseDir "$caseId.$targetSuffix"
-    Copy-Item -LiteralPath $inputPath -Destination $actualPath
-    & $FormatterExe "-style=file:$optionStyle" -i $actualPath
-    if ($LASTEXITCODE -ne 0) {
-        throw "$option disabled-case formatting failed with exit code $LASTEXITCODE."
-    }
-    if ((Get-NormalizedText -Path $actualPath) -ceq
-        (Get-NormalizedText -Path $targetPath)) {
-        throw "$option has no independently observable effect in $caseId."
-    }
-    Write-Host "PASS $option option isolation"
 }
 
 $multiSectionStyle = Join-Path $WorkDir 'multi-section.clang-format'
