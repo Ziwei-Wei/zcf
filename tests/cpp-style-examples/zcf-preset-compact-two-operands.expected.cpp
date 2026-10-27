@@ -6,6 +6,5 @@ compact_delta()
         sampleIndex
         * stride
         + channelOffset;
-
     return delta + layered;
 }

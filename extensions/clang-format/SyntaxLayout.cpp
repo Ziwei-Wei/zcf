@@ -460,15 +460,19 @@ const FormatToken *findLambdaCapture(const FormatToken &LeftParen) {
   return CaptureClose->MatchingParen;
 }
 
+bool isAuthorExpandedLambda(const FormatToken &LeftParen,
+                            const FormatToken &BodyBrace) {
+  return LeftParen.Next && LeftParen.MatchingParen &&
+         LeftParen.Next->NewlinesBefore > 0 &&
+         LeftParen.MatchingParen->NewlinesBefore > 0 &&
+         BodyBrace.NewlinesBefore > 0;
+}
+
 bool lambdaNeedsExpansion(const FormatToken &LeftParen,
                           const FormatToken &BodyBrace,
                           const FormatStyle &FormatStyle, unsigned BaseIndent) {
-  if (LeftParen.Next && LeftParen.MatchingParen &&
-      LeftParen.Next->NewlinesBefore > 0 &&
-      LeftParen.MatchingParen->NewlinesBefore > 0 &&
-      BodyBrace.NewlinesBefore > 0) {
+  if (isAuthorExpandedLambda(LeftParen, BodyBrace))
     return true;
-  }
 
   unsigned CurrentLineSemicolons = 0;
   unsigned MaximumLineSemicolons = 0;
@@ -499,14 +503,28 @@ void expandBodyDrivenLambdas(AnnotatedLine &Line,
       continue;
     }
     auto *BodyBrace = findLambdaBodyBrace(*Token);
+    const unsigned BaseIndent = Line.Level * FormatStyle.IndentWidth;
     if (!BodyBrace ||
-        !lambdaNeedsExpansion(*Token, *BodyBrace, FormatStyle,
-                              Line.Level * FormatStyle.IndentWidth)) {
+        !lambdaNeedsExpansion(*Token, *BodyBrace, FormatStyle, BaseIndent)) {
       continue;
     }
 
-    forceMultilineList(*Token);
-    forceBreakBefore(*BodyBrace);
+    // A header that fits keeps its parameters and brace on one line; only the
+    // body is expanded.
+    const auto HeaderWidth =
+        BodyBrace->Previous
+            ? getFlattenedWidth(*Line.First, *BodyBrace->Previous)
+            : std::nullopt;
+    const bool HeaderFits =
+        HeaderWidth &&
+        (FormatStyle.ColumnLimit == 0 ||
+         BaseIndent + *HeaderWidth + BodyBrace->SpacesRequiredBefore +
+                 BodyBrace->ColumnWidth <=
+             FormatStyle.ColumnLimit);
+    if (!HeaderFits || isAuthorExpandedLambda(*Token, *BodyBrace)) {
+      forceMultilineList(*Token);
+      forceBreakBefore(*BodyBrace);
+    }
     for (AnnotatedLine *Child : BodyBrace->Children) {
       if (Child && Child->First)
         forceBreakBefore(*Child->First);

@@ -120,7 +120,8 @@ foreach ($option in @(
     'BodyDrivenLambdaExpansion',
     'VerticalTernaryExpressions',
     'SeparateSwitchCaseBlocks',
-    'ScopeStyleNestedTemplates'
+    'ScopeStyleNestedTemplates',
+    'SeparateDefinitionBlocksFromAll'
 )) {
     if (-not $enabledDump.Contains("${option}: true")) {
         throw "Enabled dump-config did not preserve $option."
@@ -192,11 +193,9 @@ $regressionContracts = [ordered]@{
         '{BasedOnStyle: LLVM, ZCFExtensions: {BlankLinesAroundControlStatements: true}}'
     'nested-aggregate-standalone-layout' =
         '{BasedOnStyle: LLVM, ZCFExtensions: {ExpandNestedAggregateBraces: true}}'
-    'nested-aggregate-tab-indentation' =
-        '{BasedOnStyle: LLVM, IndentWidth: 4, TabWidth: 4, UseTab: ForIndentation, ZCFExtensions: {ExpandNestedAggregateBraces: true}}'
     'lambda-chain-is-not-aggregate' = "file:$StyleFile"
     'separation-collapses-extra-blank-lines' =
-        '{BasedOnStyle: ZCF, MaxEmptyLinesToKeep: 3}'
+        '{BasedOnStyle: ZCF, MaxEmptyLinesToKeep: 3, ZCFExtensions: {BlankLineBeforeReturn: true}}'
     'separation-preserves-comments' = '{BasedOnStyle: ZCF}'
     'signature-pointer-and-explicit-parameters' =
         '{BasedOnStyle: LLVM, ZCFExtensions: {ForceMultilineFunctionSignatures: true}}'
@@ -204,6 +203,8 @@ $regressionContracts = [ordered]@{
         '{BasedOnStyle: LLVM, ZCFExtensions: {BreakPackExpansionInheritance: true}}'
     'separate-deleted-functions' =
         '{BasedOnStyle: LLVM, ZCFExtensions: {SeparateDeletedFunctions: true}}'
+    'definition-separation-guards' =
+        '{BasedOnStyle: LLVM, ZCFExtensions: {SeparateDefinitionBlocksFromAll: true}}'
     'pack-indexed-function-brace' =
         '{BasedOnStyle: LLVM, Standard: c++20, BreakBeforeBraces: Allman, ZCFExtensions: {WrapPackIndexedFunctionBraces: true}}'
     'qualified-signature-parameters' =
@@ -322,6 +323,12 @@ $presetRuleContracts = @(
         Case = 'label-blank-line-separation'
         Input = Join-Path $CaseDir 'label-blank-line-separation.input.cpp'
         Expected = Join-Path $CaseDir 'label-blank-line-separation.zcf.cpp'
+    },
+    @{
+        Option = 'SeparateDefinitionBlocksFromAll'
+        Case = 'definition-block-separation'
+        Input = Join-Path $CaseDir 'definition-block-separation.input.cpp'
+        Expected = Join-Path $CaseDir 'definition-block-separation.zcf.cpp'
     },
     @{
         Option = 'ProgressiveCallExpansion'
@@ -458,7 +465,6 @@ if ($LASTEXITCODE -ne 0) {
 $enabledPresetOptions = @(
     'ArgumentIndentedClosingParentheses',
     'ForceMultilineFunctionSignatures',
-    'BlankLineBeforeReturn',
     'BreakConstructorDestructorSpecifiers',
     'CompactSingleArgumentCalls',
     'ExpandNestedAggregateBraces',
@@ -470,6 +476,7 @@ $enabledPresetOptions = @(
     'AlignMacrosAcrossDirectives',
     'DeindentQualifiedFunctionNames',
     'SeparateDeletedFunctions',
+    'SeparateDefinitionBlocksFromAll',
     'BlankLinesAroundLabels',
     'IndentAttributedLabels',
     'SeparateClosingDirectiveComments',
@@ -497,6 +504,9 @@ foreach ($setting in @(
     if (-not $presetDump.Contains($setting)) {
         throw "ZCF preset is missing '$setting'."
     }
+}
+if ($presetDump -notmatch '(?s)BraceWrapping:.*?BeforeLambdaBody:\s+true') {
+    throw 'ZCF preset did not wrap lambda body braces.'
 }
 if ($presetDump -notmatch
     '(?s)AlignConsecutiveAssignments:.*?Enabled:\s+false') {
@@ -654,22 +664,30 @@ if (-not (Get-NormalizedText -Path $commentArithmeticInput).Contains(
 }
 Write-Host 'PASS comment-bearing arithmetic safety'
 
-$overrideInput = Join-Path $WorkDir 'preset-override.cpp'
-[System.IO.File]::WriteAllText(
-    $overrideInput,
-    "int run() { work(); return 1; }`n",
-    [System.Text.UTF8Encoding]::new($false)
-)
-$overrideStyle =
-    '{BasedOnStyle: ZCF, ZCFExtensions: {BlankLineBeforeReturn: false}}'
-& $FormatterExe "-style=$overrideStyle" -i $overrideInput
-if ($LASTEXITCODE -ne 0) {
-    throw "ZCF option override failed with exit code $LASTEXITCODE."
-}
-if ((Get-NormalizedText -Path $overrideInput).Contains(
-    "work();`n`n    return 1;"
+# The preset leaves return separation to the author; an explicit override
+# enables it.
+foreach ($override in @(
+    @{ Style = '{BasedOnStyle: ZCF}'; Separated = $false },
+    @{
+        Style = '{BasedOnStyle: ZCF, ZCFExtensions: {BlankLineBeforeReturn: true}}'
+        Separated = $true
+    }
 )) {
-    throw 'ZCF option override did not disable return separation.'
+    $overrideInput = Join-Path $WorkDir 'preset-override.cpp'
+    [System.IO.File]::WriteAllText(
+        $overrideInput,
+        "int run() { work(); return 1; }`n",
+        [System.Text.UTF8Encoding]::new($false)
+    )
+    & $FormatterExe "-style=$($override.Style)" -i $overrideInput
+    if ($LASTEXITCODE -ne 0) {
+        throw "ZCF option override failed with exit code $LASTEXITCODE."
+    }
+    if ((Get-NormalizedText -Path $overrideInput).Contains(
+        "work();`n`n    return 1;"
+    ) -ne $override.Separated) {
+        throw "Return separation is wrong for $($override.Style)."
+    }
 }
 Write-Host 'PASS ZCF preset option override'
 

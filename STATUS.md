@@ -5,7 +5,7 @@ Last updated: 2026-10-08
 ## Complete
 
 - `zcf` is a single clang-format-compatible native executable.
-- The reviewed C++ policy provides 24 independently configurable extensions.
+- The reviewed C++ policy provides 25 independently configurable extensions.
 - Upstream LLVM 20.1.8 remains pinned and pristine behind a generated overlay.
 - `pipx install zcf` packages the native executable and exposes:
   - `zcf`
@@ -112,7 +112,7 @@ replacement set (`PostFormatSource`) serve both the structural and boundary
 rules. Duplicated layout helpers were merged, which also fixed
 `ForceMultilineFunctionSignatures` leaving multiple parameters bin-packed on one
 line outside the preset (where `BinPackParameters: OnePerLine` had masked it).
-The 24 extension options are declared once in `ExtensionOptions.def`.
+The 25 extension options are declared once in `ExtensionOptions.def`.
 
 `DeindentQualifiedFunctionNames` now changes only qualified-name indentation.
 Parameter breaking for declarations whose qualified name is split by comments
@@ -128,9 +128,33 @@ layout, and the bridge patch no longer needs a space-required hook.
 
 The blank-line separation rules (`BlankLineBeforeReturn`,
 `BlankLinesAroundControlStatements`, `BlankLinesAroundLabels`,
-`SeparateSwitchCaseBlocks`, and `SeparateDeletedFunctions`) produce exactly one
+`SeparateSwitchCaseBlocks`, `SeparateDeletedFunctions`, and
+`SeparateDefinitionBlocksFromAll`) produce exactly one
 blank line, collapsing extras even when `MaxEmptyLinesToKeep` allows more. They
 rewrite only whitespace between lines, so adjacent comments are preserved.
+
+`SeparateDefinitionBlocksFromAll` separates every function, type, and
+namespace definition from all neighbors at file, namespace, class, and
+`extern "C"` scope, and every multi-line lambda definition
+(`auto f = [...](...) { ... };`) at any scope, including function bodies.
+Lambdas passed as call arguments and single-line lambdas are not separated.
+Separation includes preprocessor lines inside and around `#if` groups, which
+upstream `SeparateDefinitionBlocks` deliberately skips. Leading
+comments, decorating macro lines directly above a definition, and a preceding
+access specifier stay attached. Adjacent directives such as `#endif` followed
+by `#if` are left together. Statement boundaries come from raw tokens, because
+LLVM 20 can merge a pack-indexed function with the following declaration across
+`#endif`/`#if`.
+
+The ZCF preset sets `BraceWrapping.BeforeLambdaBody: true`, so a multi-line
+lambda body starts with its brace on its own line, and no longer enables
+`BlankLineBeforeReturn`; blank lines before return statements are left to the
+author unless the option is set explicitly.
+
+`BodyDrivenLambdaExpansion` expands only the body of a multi-statement or
+overflowing lambda when its header fits; parameters are exploded one per line,
+with the brace on its own line, only when the header overflows or the author
+already exploded them.
 
 All code-review follow-ups are complete.
 

@@ -132,6 +132,9 @@ runExtensionPostFormatPass(const Environment &Env, const FormatStyle &Style) {
   std::vector<PendingReplacement> Pending;
   collectStructuralFixes(Source, Style, *Extensions, AffectedRangeMgr, Pending);
   collectBoundaryFixes(Source, Style, *Extensions, AffectedRangeMgr, Pending);
+  if (Extensions->SeparateDefinitionBlocksFromAll)
+    collectDefinitionSeparationFixes(Env, Style, Source, AffectedRangeMgr,
+                                     Pending);
   return {
       buildReplacements(Pending, Env.getSourceManager(), Source.StartOfFile),
       0};
