@@ -309,20 +309,20 @@ void queueReplacement(std::vector<PendingReplacement> &Pending, StringRef Code,
       {BeginOffset, EndOffset, std::move(Text), std::string(Context)});
 }
 
-unsigned countNewlines(StringRef Text) {
-  return static_cast<unsigned>(Text.count('\n'));
-}
-
-std::string buildLeadingWhitespace(StringRef ExistingWhitespace,
-                                   unsigned DesiredNewlines,
-                                   StringRef DefaultLineEnding) {
-  const StringRef LineEnding =
-      ExistingWhitespace.contains("\r\n") ? "\r\n" : DefaultLineEnding;
-  std::string Result;
-  for (unsigned I = 0; I < DesiredNewlines; ++I)
-    Result += LineEnding.str();
-  Result += getIndentSuffix(ExistingWhitespace).str();
-  return Result;
+void queueSingleBlankLine(std::vector<PendingReplacement> &Pending,
+                          StringRef Code, unsigned BeginOffset,
+                          unsigned EndOffset, StringRef DefaultLineEnding,
+                          StringRef Context) {
+  const StringRef Existing = getExistingText(Code, BeginOffset, EndOffset);
+  // Only whitespace may be rewritten; a range that reaches a comment or code
+  // indicates a caller bug and must not delete it.
+  if (!Existing.trim().empty())
+    return;
+  const std::string LineEnding =
+      (Existing.contains("\r\n") ? StringRef("\r\n") : DefaultLineEnding).str();
+  queueReplacement(Pending, Code, BeginOffset, EndOffset,
+                   LineEnding + LineEnding + getIndentSuffix(Existing).str(),
+                   Context);
 }
 
 unsigned measureColumn(StringRef Text, unsigned TabWidth) {

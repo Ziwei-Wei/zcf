@@ -126,6 +126,12 @@ three spacing options (`SpaceParameterPackEllipses`,
 were removed from the policy. Their constructs now follow upstream spacing and
 layout, and the bridge patch no longer needs a space-required hook.
 
+The blank-line separation rules (`BlankLineBeforeReturn`,
+`BlankLinesAroundControlStatements`, `BlankLinesAroundLabels`,
+`SeparateSwitchCaseBlocks`, and `SeparateDeletedFunctions`) produce exactly one
+blank line, collapsing extras even when `MaxEmptyLinesToKeep` allows more. They
+rewrite only whitespace between lines, so adjacent comments are preserved.
+
 All code-review follow-ups are complete.
 
 ## Remaining release work
