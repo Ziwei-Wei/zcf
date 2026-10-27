@@ -82,12 +82,13 @@ void collectStructuralFixes(const PostFormatSource &Source,
                             const ExtensionStyle &Extensions,
                             AffectedRangeManager &AffectedRangeMgr,
                             std::vector<PendingReplacement> &Pending);
-// Separates definition blocks and preprocessor conditional groups containing
-// definitions, which SeparateDefinitionBlocks deliberately skips.
+// Separates definition blocks, function declarations, and preprocessor
+// conditional groups, which SeparateDefinitionBlocks deliberately skips.
 void collectDefinitionSeparationFixes(const Environment &Env,
                                       const FormatStyle &Style,
                                       const PostFormatSource &Source,
                                       const ExtensionStyle &Extensions,
+                                      bool BeforeFormatting,
                                       AffectedRangeManager &AffectedRangeMgr,
                                       std::vector<PendingReplacement> &Pending);
 void collectBoundaryFixes(const PostFormatSource &Source,

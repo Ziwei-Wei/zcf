@@ -15,6 +15,8 @@ struct TokenFacts {
   bool BracedInit = false;
   bool RequiresExpression = false;
   bool LambdaBody = false;
+  // A function declaration's name or parameter list opener.
+  bool FunctionDeclaration = false;
   bool TemplateOpener = false;
   bool TemplateCloser = false;
   bool LineStart = false;
@@ -32,9 +34,11 @@ public:
       : TokenAnalyzer(Env, Style), Facts(Facts) {}
 
   std::pair<tooling::Replacements, unsigned>
-  analyze(TokenAnnotator &, SmallVectorImpl<AnnotatedLine *> &Lines,
+  analyze(TokenAnnotator &Annotator, SmallVectorImpl<AnnotatedLine *> &Lines,
           FormatTokenLexer &) override {
-    for (const AnnotatedLine *Line : Lines) {
+    for (AnnotatedLine *Line : Lines) {
+      // Function declaration parentheses are classified here.
+      Annotator.calculateFormattingInformation(*Line);
       if (!Line->InPPDirective)
         facts(*Line->First).LineStart = true;
       record(*Line);
@@ -56,6 +60,10 @@ private:
         facts(*Token).RequiresExpression = true;
       if (Token->is(TT_LambdaLBrace))
         facts(*Token).LambdaBody = true;
+      if (Token->isOneOf(TT_FunctionDeclarationName,
+                         TT_FunctionDeclarationLParen)) {
+        facts(*Token).FunctionDeclaration = true;
+      }
       if (Token->is(TT_TemplateOpener))
         facts(*Token).TemplateOpener = true;
       if (Token->is(TT_TemplateCloser))
@@ -80,8 +88,8 @@ struct Item {
   // A statement without `;` or a body that ends where the parser starts a new
   // line, such as a decorating macro (`MIDL_INTERFACE(...)`).
   bool Unterminated = false;
-  // A balanced conditional group; Definition means a branch contains one.
-  bool Group = false;
+  // A function declaration without a body, such as `int f();`.
+  bool FunctionDeclaration = false;
 };
 
 enum class BodyKind { Namespace, Linkage, Type, Function };
@@ -90,12 +98,12 @@ class DefinitionSeparator {
 public:
   DefinitionSeparator(const PostFormatSource &Source,
                       const std::unordered_map<unsigned, TokenFacts> &Facts,
-                      const ExtensionStyle &Extensions,
+                      const ExtensionStyle &Extensions, bool BeforeFormatting,
                       AffectedRangeManager &AffectedRangeMgr,
                       std::vector<PendingReplacement> &Pending)
       : Source(Source), Tokens(Source.Tokens), Facts(Facts),
-        Extensions(Extensions), AffectedRangeMgr(AffectedRangeMgr),
-        Pending(Pending) {}
+        Extensions(Extensions), BeforeFormatting(BeforeFormatting),
+        AffectedRangeMgr(AffectedRangeMgr), Pending(Pending) {}
 
   void run() { separateScope(0, Tokens.size(), false); }
 
@@ -175,6 +183,7 @@ private:
     bool SawEnum = false;
     bool StartsNamespace = false;
     bool StartsLinkage = false;
+    bool SawFunctionDeclaration = false;
     for (unsigned I = First; I < End; ++I) {
       if (inDirective(I))
         continue;
@@ -206,6 +215,10 @@ private:
         if (Second != Facts.end() && Second->second.TemplateCloser)
           --TemplateDepth;
       }
+      if (ParenDepth == 0 && TemplateDepth == 0) {
+        const TokenFacts *Facts = facts(I);
+        SawFunctionDeclaration |= Facts && Facts->FunctionDeclaration;
+      }
       if (Token.Tok.isOneOf(tok::l_paren, tok::l_square)) {
         ++ParenDepth;
         continue;
@@ -232,8 +245,10 @@ private:
       SawEnum |= Text == "enum";
       SawAssignment |= Token.Tok.is(tok::equal) &&
                        Tokens[I - 1].Text != "operator";
-      if (Token.Tok.is(tok::semi))
+      if (Token.Tok.is(tok::semi)) {
+        Statement.FunctionDeclaration = SawFunctionDeclaration && !Block;
         return Statement;
+      }
       if (Token.Tok.isNot(tok::l_brace))
         continue;
 
@@ -250,8 +265,8 @@ private:
       if (!Body) {
         if (Facts && Facts->LambdaBody) {
           Statement.Definition |=
-              SawAssignment && lastLine(static_cast<unsigned>(Close)) !=
-                                   Tokens[I].LineIndex;
+              !BeforeFormatting && SawAssignment &&
+              lastLine(static_cast<unsigned>(Close)) != Tokens[I].LineIndex;
           separateScope(I + 1, static_cast<unsigned>(Close), true);
         }
         I = static_cast<unsigned>(Close);
@@ -309,11 +324,11 @@ private:
   }
 
   // Returns the index of the directive closing the conditional opened at
-  // Open, or Items.size() when it is not closed in this sequence.
-  size_t findConditionalClose(const std::vector<Item> &Items,
-                              size_t Open) const {
+  // Open, or End when it is not closed before End.
+  size_t findConditionalClose(const std::vector<Item> &Items, size_t Open,
+                              size_t End) const {
     unsigned Depth = 0;
-    for (size_t I = Open + 1; I < Items.size(); ++I) {
+    for (size_t I = Open + 1; I < End; ++I) {
       const ConditionalKind Kind = conditionalKind(Items[I]);
       if (Kind == ConditionalKind::Open) {
         ++Depth;
@@ -323,52 +338,12 @@ private:
         --Depth;
       }
     }
-    return Items.size();
+    return End;
   }
 
-  // Separates the definitions in a sequence of items and returns whether it
-  // contains one. A balanced conditional group is a single item whose
-  // directives stay attached to the branch contents.
-  // SeparateDefinitionBlocksFromAll separates definitions from code
-  // neighbors but keeps conditional directives attached to them;
-  // SeparatePreprocessorConditionalBlocks separates a whole group that
-  // contains a definition.
-  bool separateItems(const std::vector<Item> &Sequence) {
-    std::vector<Item> Items;
-    for (size_t I = 0; I < Sequence.size(); ++I) {
-      const size_t Close =
-          conditionalKind(Sequence[I]) == ConditionalKind::Open
-              ? findConditionalClose(Sequence, I)
-              : Sequence.size();
-      if (Close == Sequence.size()) {
-        Items.push_back(Sequence[I]);
-        continue;
-      }
-      Item Group{ItemKind::Statement, Sequence[I].First, Sequence[Close].Last};
-      Group.Group = true;
-      size_t BranchBegin = I + 1;
-      unsigned Depth = 0;
-      for (size_t J = I + 1; J <= Close; ++J) {
-        const ConditionalKind Kind = conditionalKind(Sequence[J]);
-        if (Kind == ConditionalKind::Open) {
-          ++Depth;
-          continue;
-        }
-        if (Kind == ConditionalKind::Close && Depth > 0) {
-          --Depth;
-          continue;
-        }
-        if (Depth > 0 || Kind == ConditionalKind::None)
-          continue;
-        Group.Definition |= separateItems(std::vector<Item>(
-            Sequence.begin() + static_cast<long>(BranchBegin),
-            Sequence.begin() + static_cast<long>(J)));
-        BranchBegin = J + 1;
-      }
-      Items.push_back(Group);
-      I = Close;
-    }
-
+  // Separates definitions and function declarations from every neighbor,
+  // including directive lines, and conditional groups from their neighbors.
+  void separateItems(std::vector<Item> &Items) {
     // Comment and decorating macro lines directly above a definition belong
     // to it.
     for (size_t I = Items.size(); I-- > 1;) {
@@ -385,35 +360,65 @@ private:
       Items.erase(Items.begin() + static_cast<long>(I - 1));
     }
 
-    bool AnyDefinition = false;
     for (size_t I = 0; I < Items.size(); ++I) {
-      AnyDefinition |= Items[I].Definition;
       if (!separable(Items[I]))
         continue;
-      const Item *Previous = I > 0 ? &Items[I - 1] : nullptr;
-      const Item *Next = I + 1 < Items.size() ? &Items[I + 1] : nullptr;
-      if (Previous && Previous->Kind != ItemKind::AccessSpecifier &&
-          !keepsAttached(Items[I], *Previous)) {
-        queueBlankLineBetween(Previous->Last, Items[I].First);
-      }
-      if (Next && !keepsAttached(Items[I], *Next))
-        queueBlankLineBetween(Items[I].Last, Next->First);
+      if (I > 0 && Items[I - 1].Kind != ItemKind::AccessSpecifier)
+        queueBlankLineBetween(Items[I - 1].Last, Items[I].First);
+      if (I + 1 < Items.size())
+        queueBlankLineBetween(Items[I].Last, Items[I + 1].First);
     }
-    return AnyDefinition;
+
+    if (Extensions.SeparatePreprocessorConditionalBlocks)
+      separateConditionalGroups(Items, 0, Items.size());
   }
 
   bool separable(const Item &Candidate) const {
-    return Candidate.Definition &&
-           (Candidate.Group ? Extensions.SeparatePreprocessorConditionalBlocks
-                            : Extensions.SeparateDefinitionBlocksFromAll);
+    return (Candidate.Definition &&
+            Extensions.SeparateDefinitionBlocksFromAll) ||
+           (Candidate.FunctionDeclaration &&
+            Extensions.SeparateFunctionDeclarations);
   }
 
-  // A definition stays attached to neighboring conditional directives and
-  // groups; separating those is SeparatePreprocessorConditionalBlocks' job.
-  bool keepsAttached(const Item &Candidate, const Item &Neighbor) const {
-    return !Candidate.Group &&
-           (Neighbor.Group ||
-            conditionalKind(Neighbor) != ConditionalKind::None);
+  // Separates each balanced `#if`...`#endif` group in [Begin, End) from its
+  // neighbors, then the groups nested in each of its branches. Comment lines
+  // directly above `#if` stay attached to the group.
+  void separateConditionalGroups(const std::vector<Item> &Items, size_t Begin,
+                                 size_t End) {
+    for (size_t I = Begin; I < End; ++I) {
+      if (conditionalKind(Items[I]) != ConditionalKind::Open)
+        continue;
+      const size_t Close = findConditionalClose(Items, I, End);
+      if (Close == End)
+        continue;
+      size_t Leading = I;
+      while (Leading > Begin &&
+             Items[Leading - 1].Kind == ItemKind::Comment &&
+             Tokens[Items[Leading].First].LineIndex ==
+                 lastLine(Items[Leading - 1].Last) + 1) {
+        --Leading;
+      }
+      if (Leading > Begin &&
+          Items[Leading - 1].Kind != ItemKind::AccessSpecifier) {
+        queueBlankLineBetween(Items[Leading - 1].Last, Items[Leading].First);
+      }
+      if (Close + 1 < End)
+        queueBlankLineBetween(Items[Close].Last, Items[Close + 1].First);
+
+      size_t BranchBegin = I + 1;
+      for (size_t J = I + 1; J <= Close; ++J) {
+        const ConditionalKind Kind = conditionalKind(Items[J]);
+        if (Kind == ConditionalKind::Open) {
+          J = findConditionalClose(Items, J, Close);
+          continue;
+        }
+        if (Kind == ConditionalKind::None)
+          continue;
+        separateConditionalGroups(Items, BranchBegin, J);
+        BranchBegin = J + 1;
+      }
+      I = Close;
+    }
   }
 
   void queueBlankLineBetween(unsigned Before, unsigned After) {
@@ -427,13 +432,16 @@ private:
     }
     queueSingleBlankLine(Pending, Source.Code, Previous.EndOffset, Next.Offset,
                          Source.DefaultLineEnding,
-                         "SeparateDefinitionBlocksFromAll");
+                         "DefinitionSeparation");
   }
 
   const PostFormatSource &Source;
   const std::vector<TokenInfo> &Tokens;
   const std::unordered_map<unsigned, TokenFacts> &Facts;
   const ExtensionStyle &Extensions;
+  // Lambda layout is unknown before formatting, so lambdas are left to the
+  // post-format pass.
+  const bool BeforeFormatting;
   AffectedRangeManager &AffectedRangeMgr;
   std::vector<PendingReplacement> &Pending;
 };
@@ -444,11 +452,13 @@ void collectDefinitionSeparationFixes(const Environment &Env,
                                       const FormatStyle &Style,
                                       const PostFormatSource &Source,
                                       const ExtensionStyle &Extensions,
+                                      bool BeforeFormatting,
                                       AffectedRangeManager &AffectedRangeMgr,
                                       std::vector<PendingReplacement> &Pending) {
   std::unordered_map<unsigned, TokenFacts> Facts;
   TokenFactCollector(Env, Style, Facts).process();
-  DefinitionSeparator(Source, Facts, Extensions, AffectedRangeMgr, Pending)
+  DefinitionSeparator(Source, Facts, Extensions, BeforeFormatting,
+                      AffectedRangeMgr, Pending)
       .run();
 }
 

@@ -122,6 +122,7 @@ foreach ($option in @(
     'SeparateSwitchCaseBlocks',
     'ScopeStyleNestedTemplates',
     'SeparateDefinitionBlocksFromAll',
+    'SeparateFunctionDeclarations',
     'SeparatePreprocessorConditionalBlocks'
 )) {
     if (-not $enabledDump.Contains("${option}: true")) {
@@ -206,6 +207,8 @@ $regressionContracts = [ordered]@{
         '{BasedOnStyle: LLVM, ZCFExtensions: {SeparateDeletedFunctions: true}}'
     'definition-separation-guards' =
         '{BasedOnStyle: LLVM, ZCFExtensions: {SeparateDefinitionBlocksFromAll: true}}'
+    'function-declarations-only' =
+        '{BasedOnStyle: LLVM, ZCFExtensions: {SeparateFunctionDeclarations: true}}'
     'preprocessor-conditional-blocks-only' =
         '{BasedOnStyle: LLVM, ZCFExtensions: {SeparatePreprocessorConditionalBlocks: true}}'
     'pack-indexed-function-brace' =
@@ -334,6 +337,12 @@ $presetRuleContracts = @(
         Case = 'lambda-definition-separation'
         Input = Join-Path $CaseDir 'lambda-definition-separation.input.cpp'
         Expected = Join-Path $CaseDir 'lambda-definition-separation.zcf.cpp'
+    },
+    @{
+        Option = 'SeparateFunctionDeclarations'
+        Case = 'function-declaration-separation'
+        Input = Join-Path $CaseDir 'function-declaration-separation.input.cpp'
+        Expected = Join-Path $CaseDir 'function-declaration-separation.zcf.cpp'
     },
     @{
         Option = 'SeparatePreprocessorConditionalBlocks'
@@ -494,6 +503,7 @@ $enabledPresetOptions = @(
     'DeindentQualifiedFunctionNames',
     'SeparateDeletedFunctions',
     'SeparateDefinitionBlocksFromAll',
+    'SeparateFunctionDeclarations',
     'SeparatePreprocessorConditionalBlocks',
     'BlankLinesAroundLabels',
     'IndentAttributedLabels',
@@ -797,18 +807,27 @@ if ((Get-NormalizedText -Path $nonCppZCF) -cne
 }
 Write-Host 'PASS non-C++ ZCF fallback'
 
+# Options that produce the same blank lines as the tested option are disabled
+# so the tested option must reproduce its target alone.
+$overlappingOptions = @{
+    BlankLinesAroundLabels = @(
+        'BlankLineBeforeReturn',
+        'BlankLinesAroundControlStatements'
+    )
+    SeparateDeletedFunctions = @('SeparateFunctionDeclarations')
+}
 foreach ($entry in $optionCases.GetEnumerator()) {
     $option = [string]$entry.Key
     $caseId = [string]$entry.Value
     $optionStyle = Join-Path $WorkDir "$option.disabled.clang-format"
     $styleText = [System.IO.File]::ReadAllText($StyleFile)
-    if ($option -ceq 'BlankLinesAroundLabels') {
-        $styleText = $styleText.
-            Replace('  BlankLineBeforeReturn: true', '  BlankLineBeforeReturn: false').
-            Replace(
-                '  BlankLinesAroundControlStatements: true',
-                '  BlankLinesAroundControlStatements: false'
+    if ($overlappingOptions.ContainsKey($option)) {
+        foreach ($overlapping in $overlappingOptions[$option]) {
+            $styleText = $styleText.Replace(
+                "  ${overlapping}: true",
+                "  ${overlapping}: false"
             )
+        }
         $enabledStyle = Join-Path $WorkDir "$option.enabled.clang-format"
         $enabledActual = Join-Path $WorkDir "$option.enabled.cpp"
         [System.IO.File]::WriteAllText(

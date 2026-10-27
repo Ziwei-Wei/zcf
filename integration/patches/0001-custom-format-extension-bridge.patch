@@ -51,7 +51,13 @@ index aba7db6dd..c85a41ef7 100644
      return false;
  
    Style->Language = Language;
-@@ -3840,6 +3843,9 @@ reformat(const FormatStyle &Style, StringRef Code,
+@@ -3837,9 +3840,15 @@ reformat(const FormatStyle &Style, StringRef Code,
+     });
+   }
+ 
++  Passes.emplace_back([&](const Environment &Env) {
++    return extensions::runExtensionPreFormatPass(Env, Expanded);
++  });
    Passes.emplace_back([&](const Environment &Env) {
      return Formatter(Env, Expanded, Status).process();
    });

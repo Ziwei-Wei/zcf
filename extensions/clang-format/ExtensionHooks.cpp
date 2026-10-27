@@ -116,6 +116,36 @@ getExtensionNewLineColumn(const LineState &State,
   return State.Stack.back().Indent;
 }
 
+bool separatesDefinitions(const ExtensionStyle &Extensions) {
+  return Extensions.SeparateDefinitionBlocksFromAll ||
+         Extensions.SeparateFunctionDeclarations ||
+         Extensions.SeparatePreprocessorConditionalBlocks;
+}
+
+// Blank-line separation runs before LibFormat, like upstream
+// SeparateDefinitionBlocks, so alignment of trailing comments and macros sees
+// the separated blocks. The post-format pass repeats it for layout-dependent
+// cases such as lambdas that only become multi-line while formatting.
+std::pair<tooling::Replacements, unsigned>
+runExtensionPreFormatPass(const Environment &Env, const FormatStyle &Style) {
+  const auto *Extensions = getActiveExtensionStyleConst();
+  if (!Extensions || !separatesDefinitions(*Extensions) ||
+      Style.Language != FormatStyle::LK_Cpp) {
+    return {};
+  }
+
+  const PostFormatSource Source = scanPostFormatSource(Env, Style);
+  AffectedRangeManager AffectedRangeMgr(Env.getSourceManager(),
+                                        Env.getCharRanges());
+  std::vector<PendingReplacement> Pending;
+  collectDefinitionSeparationFixes(Env, Style, Source, *Extensions,
+                                   /*BeforeFormatting=*/true, AffectedRangeMgr,
+                                   Pending);
+  return {
+      buildReplacements(Pending, Env.getSourceManager(), Source.StartOfFile),
+      0};
+}
+
 std::pair<tooling::Replacements, unsigned>
 runExtensionPostFormatPass(const Environment &Env, const FormatStyle &Style) {
   const auto *Extensions = getActiveExtensionStyleConst();
@@ -132,9 +162,9 @@ runExtensionPostFormatPass(const Environment &Env, const FormatStyle &Style) {
   std::vector<PendingReplacement> Pending;
   collectStructuralFixes(Source, Style, *Extensions, AffectedRangeMgr, Pending);
   collectBoundaryFixes(Source, Style, *Extensions, AffectedRangeMgr, Pending);
-  if (Extensions->SeparateDefinitionBlocksFromAll ||
-      Extensions->SeparatePreprocessorConditionalBlocks) {
+  if (separatesDefinitions(*Extensions)) {
     collectDefinitionSeparationFixes(Env, Style, Source, *Extensions,
+                                     /*BeforeFormatting=*/false,
                                      AffectedRangeMgr, Pending);
   }
   return {
