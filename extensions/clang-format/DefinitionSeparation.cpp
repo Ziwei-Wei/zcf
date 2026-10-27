@@ -282,7 +282,83 @@ private:
     return Statement;
   }
 
-  void separateItems(std::vector<Item> &Items) {
+  enum class ConditionalKind { None, Open, Branch, Close };
+
+  ConditionalKind conditionalKind(const Item &Directive) const {
+    if (Directive.Kind != ItemKind::Directive ||
+        Directive.First == Directive.Last ||
+        Tokens[Directive.First].Tok.isNot(tok::hash)) {
+      return ConditionalKind::None;
+    }
+    const StringRef Name = Tokens[Directive.First + 1].Text;
+    if (Name == "if" || Name == "ifdef" || Name == "ifndef")
+      return ConditionalKind::Open;
+    if (Name == "elif" || Name == "elifdef" || Name == "elifndef" ||
+        Name == "else") {
+      return ConditionalKind::Branch;
+    }
+    if (Name == "endif")
+      return ConditionalKind::Close;
+    return ConditionalKind::None;
+  }
+
+  // Returns the index of the directive closing the conditional opened at
+  // Open, or Items.size() when it is not closed in this sequence.
+  size_t findConditionalClose(const std::vector<Item> &Items,
+                              size_t Open) const {
+    unsigned Depth = 0;
+    for (size_t I = Open + 1; I < Items.size(); ++I) {
+      const ConditionalKind Kind = conditionalKind(Items[I]);
+      if (Kind == ConditionalKind::Open) {
+        ++Depth;
+      } else if (Kind == ConditionalKind::Close) {
+        if (Depth == 0)
+          return I;
+        --Depth;
+      }
+    }
+    return Items.size();
+  }
+
+  // Separates the definitions in a sequence of items and returns whether it
+  // contains one. A balanced conditional group is a single item: its
+  // directives stay attached to the branch contents, and the whole group is
+  // separated from its neighbors when any branch contains a definition.
+  bool separateItems(const std::vector<Item> &Sequence) {
+    std::vector<Item> Items;
+    for (size_t I = 0; I < Sequence.size(); ++I) {
+      const size_t Close =
+          conditionalKind(Sequence[I]) == ConditionalKind::Open
+              ? findConditionalClose(Sequence, I)
+              : Sequence.size();
+      if (Close == Sequence.size()) {
+        Items.push_back(Sequence[I]);
+        continue;
+      }
+      Item Group{ItemKind::Statement, Sequence[I].First, Sequence[Close].Last};
+      size_t BranchBegin = I + 1;
+      unsigned Depth = 0;
+      for (size_t J = I + 1; J <= Close; ++J) {
+        const ConditionalKind Kind = conditionalKind(Sequence[J]);
+        if (Kind == ConditionalKind::Open) {
+          ++Depth;
+          continue;
+        }
+        if (Kind == ConditionalKind::Close && Depth > 0) {
+          --Depth;
+          continue;
+        }
+        if (Depth > 0 || Kind == ConditionalKind::None)
+          continue;
+        Group.Definition |= separateItems(std::vector<Item>(
+            Sequence.begin() + static_cast<long>(BranchBegin),
+            Sequence.begin() + static_cast<long>(J)));
+        BranchBegin = J + 1;
+      }
+      Items.push_back(Group);
+      I = Close;
+    }
+
     // Comment and decorating macro lines directly above a definition belong
     // to it.
     for (size_t I = Items.size(); I-- > 1;) {
@@ -299,14 +375,17 @@ private:
       Items.erase(Items.begin() + static_cast<long>(I - 1));
     }
 
+    bool AnyDefinition = false;
     for (size_t I = 0; I < Items.size(); ++I) {
       if (!Items[I].Definition)
         continue;
+      AnyDefinition = true;
       if (I > 0 && Items[I - 1].Kind != ItemKind::AccessSpecifier)
         queueBlankLineBetween(Items[I - 1].Last, Items[I].First);
       if (I + 1 < Items.size())
         queueBlankLineBetween(Items[I].Last, Items[I + 1].First);
     }
+    return AnyDefinition;
   }
 
   void queueBlankLineBetween(unsigned Before, unsigned After) {
