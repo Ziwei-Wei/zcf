@@ -138,12 +138,13 @@ namespace definition from all neighbors at file, namespace, class, and
 `extern "C"` scope, and every multi-line lambda definition
 (`auto f = [...](...) { ... };`) at any scope, including function bodies.
 Lambdas passed as call arguments and single-line lambdas are not separated.
-Separation includes preprocessor lines inside and around `#if` groups, which
-upstream `SeparateDefinitionBlocks` deliberately skips. Leading
+A balanced `#if`...`#endif` group is one block: its directives stay attached to
+the code they guard, and the whole group is separated from its neighbors when
+any branch contains a definition, which upstream `SeparateDefinitionBlocks`
+deliberately skips. Leading
 comments, decorating macro lines directly above a definition, and a preceding
-access specifier stay attached. Adjacent directives such as `#endif` followed
-by `#if` are left together. Statement boundaries come from raw tokens, because
-LLVM 20 can merge a pack-indexed function with the following declaration across
+access specifier stay attached. Statement boundaries come from raw tokens,
+because LLVM 20 can merge a pack-indexed function with the following declaration across
 `#endif`/`#if`.
 
 The ZCF preset sets `BraceWrapping.BeforeLambdaBody: true`, so a multi-line
