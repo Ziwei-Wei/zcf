@@ -135,13 +135,21 @@ rewrite only whitespace between lines, so adjacent comments are preserved.
 
 `SeparateDefinitionBlocksFromAll` separates every function, type, and
 namespace definition from all neighbors at file, namespace, class, and
-`extern "C"` scope, including preprocessor lines inside and around `#if`
-groups, which upstream `SeparateDefinitionBlocks` deliberately skips. Leading
+`extern "C"` scope, and every multi-line lambda definition
+(`auto f = [...](...) { ... };`) at any scope, including function bodies.
+Lambdas passed as call arguments and single-line lambdas are not separated.
+Separation includes preprocessor lines inside and around `#if` groups, which
+upstream `SeparateDefinitionBlocks` deliberately skips. Leading
 comments, decorating macro lines directly above a definition, and a preceding
 access specifier stay attached. Adjacent directives such as `#endif` followed
 by `#if` are left together. Statement boundaries come from raw tokens, because
 LLVM 20 can merge a pack-indexed function with the following declaration across
 `#endif`/`#if`.
+
+`BodyDrivenLambdaExpansion` expands only the body of a multi-statement or
+overflowing lambda when its header fits; parameters are exploded one per line,
+with the brace on its own line, only when the header overflows or the author
+already exploded them.
 
 All code-review follow-ups are complete.
 

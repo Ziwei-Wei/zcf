@@ -12,6 +12,7 @@ namespace {
 struct TokenFacts {
   bool BracedInit = false;
   bool RequiresExpression = false;
+  bool LambdaBody = false;
   bool TemplateOpener = false;
   bool TemplateCloser = false;
   bool LineStart = false;
@@ -51,12 +52,16 @@ private:
         facts(*Token).BracedInit = true;
       if (Token->is(TT_RequiresExpressionLBrace))
         facts(*Token).RequiresExpression = true;
+      if (Token->is(TT_LambdaLBrace))
+        facts(*Token).LambdaBody = true;
       if (Token->is(TT_TemplateOpener))
         facts(*Token).TemplateOpener = true;
       if (Token->is(TT_TemplateCloser))
         facts(*Token).TemplateCloser = true;
-      for (const AnnotatedLine *Child : Token->Children)
+      for (const AnnotatedLine *Child : Token->Children) {
+        facts(*Child->First).LineStart = true;
         record(*Child);
+      }
     }
   }
 
@@ -86,7 +91,7 @@ public:
       : Source(Source), Tokens(Source.Tokens), Facts(Facts),
         AffectedRangeMgr(AffectedRangeMgr), Pending(Pending) {}
 
-  void run() { separateScope(0, Tokens.size()); }
+  void run() { separateScope(0, Tokens.size(), false); }
 
 private:
   const TokenFacts *facts(unsigned Index) const {
@@ -113,10 +118,11 @@ private:
   }
 
   // Parses the items of the scope [Begin, End) and separates its definitions.
-  void separateScope(unsigned Begin, unsigned End) {
+  // In a block scope only multi-line lambda definitions are definitions.
+  void separateScope(unsigned Begin, unsigned End, bool Block) {
     std::vector<Item> Items;
     for (unsigned I = Begin; I < End;) {
-      Item Next = parseItem(I, End);
+      Item Next = parseItem(I, End, Block);
       I = Next.Last + 1;
       // A trailing comment belongs to the code before it.
       while (I < End && Tokens[I].Tok.is(tok::comment) &&
@@ -128,7 +134,7 @@ private:
     separateItems(Items);
   }
 
-  Item parseItem(unsigned I, unsigned End) {
+  Item parseItem(unsigned I, unsigned End, bool Block) {
     if (inDirective(I)) {
       unsigned Last = I;
       while (Last + 1 < End && inDirective(Last + 1) &&
@@ -151,10 +157,10 @@ private:
       if (Last < End && Tokens[Last].Tok.is(tok::colon))
         return {ItemKind::AccessSpecifier, I, Last};
     }
-    return parseStatement(I, End);
+    return parseStatement(I, End, Block);
   }
 
-  Item parseStatement(unsigned First, unsigned End) {
+  Item parseStatement(unsigned First, unsigned End, bool Block) {
     Item Statement{ItemKind::Statement, First, First};
     int ParenDepth = 0;
     int TemplateDepth = 0;
@@ -236,6 +242,12 @@ private:
                         !(Facts && Facts->RequiresExpression) &&
                         (SawEnum || !BracedInit || StartsNamespace);
       if (!Body) {
+        if (Facts && Facts->LambdaBody) {
+          Statement.Definition |=
+              SawAssignment && lastLine(static_cast<unsigned>(Close)) !=
+                                   Tokens[I].LineIndex;
+          separateScope(I + 1, static_cast<unsigned>(Close), true);
+        }
         I = static_cast<unsigned>(Close);
         continue;
       }
@@ -247,9 +259,11 @@ private:
         Kind = BodyKind::Linkage;
       else if (SawTypeKeyword || SawEnum)
         Kind = BodyKind::Type;
-      if (Kind != BodyKind::Function && !SawEnum)
-        separateScope(I + 1, static_cast<unsigned>(Close));
-      Statement.Definition |= Kind != BodyKind::Linkage;
+      if (!SawEnum) {
+        separateScope(I + 1, static_cast<unsigned>(Close),
+                      Block || Kind == BodyKind::Function);
+      }
+      Statement.Definition |= !Block && Kind != BodyKind::Linkage;
       Statement.Last = static_cast<unsigned>(Close);
       I = static_cast<unsigned>(Close);
       // Types end at the semicolon after their declarators; function try

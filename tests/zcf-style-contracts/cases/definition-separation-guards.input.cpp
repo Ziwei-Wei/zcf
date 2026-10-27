@@ -22,3 +22,10 @@ extern "C" {
 int c_first;
 void CFunction() {}
 }
+void Block(int x) {
+  int before = x;
+  auto twice = [](int v) { int w = v; return w * 2; };
+  auto once = [](int v) { return v; };
+  Call([](int v) { int w = v; return w; });
+  if (x) { auto inner = [](int v) { int w = v; return w; }; inner(x); }
+}
