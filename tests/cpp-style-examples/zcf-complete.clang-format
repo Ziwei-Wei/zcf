@@ -167,6 +167,7 @@ ZCFExtensions:
   DeindentQualifiedFunctionNames: true
   SeparateDeletedFunctions: true
   SeparateDefinitionBlocksFromAll: true
+  SeparatePreprocessorConditionalBlocks: true
   BlankLinesAroundLabels: true
   IndentAttributedLabels: true
   SeparateClosingDirectiveComments: true

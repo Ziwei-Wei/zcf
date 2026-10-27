@@ -5,7 +5,7 @@ Last updated: 2026-10-08
 ## Complete
 
 - `zcf` is a single clang-format-compatible native executable.
-- The reviewed C++ policy provides 25 independently configurable extensions.
+- The reviewed C++ policy provides 26 independently configurable extensions.
 - Upstream LLVM 20.1.8 remains pinned and pristine behind a generated overlay.
 - `pipx install zcf` packages the native executable and exposes:
   - `zcf`
@@ -112,7 +112,7 @@ replacement set (`PostFormatSource`) serve both the structural and boundary
 rules. Duplicated layout helpers were merged, which also fixed
 `ForceMultilineFunctionSignatures` leaving multiple parameters bin-packed on one
 line outside the preset (where `BinPackParameters: OnePerLine` had masked it).
-The 25 extension options are declared once in `ExtensionOptions.def`.
+The 26 extension options are declared once in `ExtensionOptions.def`.
 
 `DeindentQualifiedFunctionNames` now changes only qualified-name indentation.
 Parameter breaking for declarations whose qualified name is split by comments
@@ -134,18 +134,21 @@ blank line, collapsing extras even when `MaxEmptyLinesToKeep` allows more. They
 rewrite only whitespace between lines, so adjacent comments are preserved.
 
 `SeparateDefinitionBlocksFromAll` separates every function, type, and
-namespace definition from all neighbors at file, namespace, class, and
+namespace definition from its code neighbors at file, namespace, class, and
 `extern "C"` scope, and every multi-line lambda definition
 (`auto f = [...](...) { ... };`) at any scope, including function bodies.
 Lambdas passed as call arguments and single-line lambdas are not separated.
-A balanced `#if`...`#endif` group is one block: its directives stay attached to
-the code they guard, and the whole group is separated from its neighbors when
-any branch contains a definition, which upstream `SeparateDefinitionBlocks`
-deliberately skips. Leading
-comments, decorating macro lines directly above a definition, and a preceding
-access specifier stay attached. Statement boundaries come from raw tokens,
-because LLVM 20 can merge a pack-indexed function with the following declaration across
-`#endif`/`#if`.
+Leading comments, decorating macro lines directly above a definition, a
+preceding access specifier, and conditional directives (`#if`, `#elif`,
+`#else`, `#endif`) stay attached.
+
+`SeparatePreprocessorConditionalBlocks` treats a balanced `#if`...`#endif`
+group as one block and separates the whole group from its neighbors when any
+branch contains a definition, which upstream `SeparateDefinitionBlocks`
+deliberately skips. Groups containing only declarations are left alone.
+
+Both rules find statement boundaries from raw tokens, because LLVM 20 can merge
+a pack-indexed function with the following declaration across `#endif`/`#if`.
 
 The ZCF preset sets `BraceWrapping.BeforeLambdaBody: true`, so a multi-line
 lambda body starts with its brace on its own line, and no longer enables

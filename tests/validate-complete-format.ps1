@@ -121,7 +121,8 @@ foreach ($option in @(
     'VerticalTernaryExpressions',
     'SeparateSwitchCaseBlocks',
     'ScopeStyleNestedTemplates',
-    'SeparateDefinitionBlocksFromAll'
+    'SeparateDefinitionBlocksFromAll',
+    'SeparatePreprocessorConditionalBlocks'
 )) {
     if (-not $enabledDump.Contains("${option}: true")) {
         throw "Enabled dump-config did not preserve $option."
@@ -205,6 +206,8 @@ $regressionContracts = [ordered]@{
         '{BasedOnStyle: LLVM, ZCFExtensions: {SeparateDeletedFunctions: true}}'
     'definition-separation-guards' =
         '{BasedOnStyle: LLVM, ZCFExtensions: {SeparateDefinitionBlocksFromAll: true}}'
+    'preprocessor-conditional-blocks-only' =
+        '{BasedOnStyle: LLVM, ZCFExtensions: {SeparatePreprocessorConditionalBlocks: true}}'
     'pack-indexed-function-brace' =
         '{BasedOnStyle: LLVM, Standard: c++20, BreakBeforeBraces: Allman, ZCFExtensions: {WrapPackIndexedFunctionBraces: true}}'
     'qualified-signature-parameters' =
@@ -326,9 +329,21 @@ $presetRuleContracts = @(
     },
     @{
         Option = 'SeparateDefinitionBlocksFromAll'
+        Case = 'lambda-definition-separation'
+        Input = Join-Path $CaseDir 'lambda-definition-separation.input.cpp'
+        Expected = Join-Path $CaseDir 'lambda-definition-separation.zcf.cpp'
+    },
+    @{
+        Option = 'SeparatePreprocessorConditionalBlocks'
         Case = 'definition-block-separation'
         Input = Join-Path $CaseDir 'definition-block-separation.input.cpp'
         Expected = Join-Path $CaseDir 'definition-block-separation.zcf.cpp'
+    },
+    @{
+        Option = 'SeparatePreprocessorConditionalBlocks'
+        Case = 'preprocessor-conditional-block-separation'
+        Input = Join-Path $CaseDir 'preprocessor-conditional-block-separation.input.cpp'
+        Expected = Join-Path $CaseDir 'preprocessor-conditional-block-separation.zcf.cpp'
     },
     @{
         Option = 'ProgressiveCallExpansion'
@@ -477,6 +492,7 @@ $enabledPresetOptions = @(
     'DeindentQualifiedFunctionNames',
     'SeparateDeletedFunctions',
     'SeparateDefinitionBlocksFromAll',
+    'SeparatePreprocessorConditionalBlocks',
     'BlankLinesAroundLabels',
     'IndentAttributedLabels',
     'SeparateClosingDirectiveComments',

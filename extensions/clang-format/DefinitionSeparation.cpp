@@ -1,5 +1,7 @@
 #include "extensions/clang-format/PostFormatSource.h"
 
+#include "extensions/clang-format/ExtensionStyle.h"
+
 #include "TokenAnalyzer.h"
 #include "TokenAnnotator.h"
 
@@ -78,6 +80,8 @@ struct Item {
   // A statement without `;` or a body that ends where the parser starts a new
   // line, such as a decorating macro (`MIDL_INTERFACE(...)`).
   bool Unterminated = false;
+  // A balanced conditional group; Definition means a branch contains one.
+  bool Group = false;
 };
 
 enum class BodyKind { Namespace, Linkage, Type, Function };
@@ -86,10 +90,12 @@ class DefinitionSeparator {
 public:
   DefinitionSeparator(const PostFormatSource &Source,
                       const std::unordered_map<unsigned, TokenFacts> &Facts,
+                      const ExtensionStyle &Extensions,
                       AffectedRangeManager &AffectedRangeMgr,
                       std::vector<PendingReplacement> &Pending)
       : Source(Source), Tokens(Source.Tokens), Facts(Facts),
-        AffectedRangeMgr(AffectedRangeMgr), Pending(Pending) {}
+        Extensions(Extensions), AffectedRangeMgr(AffectedRangeMgr),
+        Pending(Pending) {}
 
   void run() { separateScope(0, Tokens.size(), false); }
 
@@ -321,9 +327,12 @@ private:
   }
 
   // Separates the definitions in a sequence of items and returns whether it
-  // contains one. A balanced conditional group is a single item: its
-  // directives stay attached to the branch contents, and the whole group is
-  // separated from its neighbors when any branch contains a definition.
+  // contains one. A balanced conditional group is a single item whose
+  // directives stay attached to the branch contents.
+  // SeparateDefinitionBlocksFromAll separates definitions from code
+  // neighbors but keeps conditional directives attached to them;
+  // SeparatePreprocessorConditionalBlocks separates a whole group that
+  // contains a definition.
   bool separateItems(const std::vector<Item> &Sequence) {
     std::vector<Item> Items;
     for (size_t I = 0; I < Sequence.size(); ++I) {
@@ -336,6 +345,7 @@ private:
         continue;
       }
       Item Group{ItemKind::Statement, Sequence[I].First, Sequence[Close].Last};
+      Group.Group = true;
       size_t BranchBegin = I + 1;
       unsigned Depth = 0;
       for (size_t J = I + 1; J <= Close; ++J) {
@@ -367,7 +377,7 @@ private:
           Previous.Kind == ItemKind::Comment ||
           (Previous.Kind == ItemKind::Statement && Previous.Unterminated &&
            !Previous.Definition);
-      if (!Items[I].Definition || !Attaches ||
+      if (!separable(Items[I]) || !Attaches ||
           Tokens[Items[I].First].LineIndex != lastLine(Previous.Last) + 1) {
         continue;
       }
@@ -377,15 +387,33 @@ private:
 
     bool AnyDefinition = false;
     for (size_t I = 0; I < Items.size(); ++I) {
-      if (!Items[I].Definition)
+      AnyDefinition |= Items[I].Definition;
+      if (!separable(Items[I]))
         continue;
-      AnyDefinition = true;
-      if (I > 0 && Items[I - 1].Kind != ItemKind::AccessSpecifier)
-        queueBlankLineBetween(Items[I - 1].Last, Items[I].First);
-      if (I + 1 < Items.size())
-        queueBlankLineBetween(Items[I].Last, Items[I + 1].First);
+      const Item *Previous = I > 0 ? &Items[I - 1] : nullptr;
+      const Item *Next = I + 1 < Items.size() ? &Items[I + 1] : nullptr;
+      if (Previous && Previous->Kind != ItemKind::AccessSpecifier &&
+          !keepsAttached(Items[I], *Previous)) {
+        queueBlankLineBetween(Previous->Last, Items[I].First);
+      }
+      if (Next && !keepsAttached(Items[I], *Next))
+        queueBlankLineBetween(Items[I].Last, Next->First);
     }
     return AnyDefinition;
+  }
+
+  bool separable(const Item &Candidate) const {
+    return Candidate.Definition &&
+           (Candidate.Group ? Extensions.SeparatePreprocessorConditionalBlocks
+                            : Extensions.SeparateDefinitionBlocksFromAll);
+  }
+
+  // A definition stays attached to neighboring conditional directives and
+  // groups; separating those is SeparatePreprocessorConditionalBlocks' job.
+  bool keepsAttached(const Item &Candidate, const Item &Neighbor) const {
+    return !Candidate.Group &&
+           (Neighbor.Group ||
+            conditionalKind(Neighbor) != ConditionalKind::None);
   }
 
   void queueBlankLineBetween(unsigned Before, unsigned After) {
@@ -405,6 +433,7 @@ private:
   const PostFormatSource &Source;
   const std::vector<TokenInfo> &Tokens;
   const std::unordered_map<unsigned, TokenFacts> &Facts;
+  const ExtensionStyle &Extensions;
   AffectedRangeManager &AffectedRangeMgr;
   std::vector<PendingReplacement> &Pending;
 };
@@ -414,11 +443,13 @@ private:
 void collectDefinitionSeparationFixes(const Environment &Env,
                                       const FormatStyle &Style,
                                       const PostFormatSource &Source,
+                                      const ExtensionStyle &Extensions,
                                       AffectedRangeManager &AffectedRangeMgr,
                                       std::vector<PendingReplacement> &Pending) {
   std::unordered_map<unsigned, TokenFacts> Facts;
   TokenFactCollector(Env, Style, Facts).process();
-  DefinitionSeparator(Source, Facts, AffectedRangeMgr, Pending).run();
+  DefinitionSeparator(Source, Facts, Extensions, AffectedRangeMgr, Pending)
+      .run();
 }
 
 } // namespace clang::format::extensions
