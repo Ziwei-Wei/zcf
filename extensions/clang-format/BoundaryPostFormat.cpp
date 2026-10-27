@@ -102,18 +102,13 @@ void collectBlankLineAroundLabelFixes(
     if (PrevLineIndex < Lines.size() && !Lines[PrevLineIndex].CommentOnly &&
         !Lines[PrevLineIndex].Disabled) {
       const unsigned BeginOffset = Lines[PrevLineIndex].ContentEndOffset;
-      const unsigned EndOffset = Tokens[*Line.FirstNonCommentToken].Offset;
+      const unsigned EndOffset = Tokens[*Line.FirstToken].Offset;
       if (rangeAffected(AffectedRangeMgr, StartOfFile, BeginOffset, EndOffset,
                         Tokens[*Line.FirstNonCommentToken].Offset,
                         Tokens[*ColonIndex].EndOffset)) {
-        const StringRef Existing =
-            getExistingText(Code, BeginOffset, EndOffset);
-        if (countNewlines(Existing) < 2) {
-          queueReplacement(
-              Pending, Code, BeginOffset, EndOffset,
-              buildLeadingWhitespace(Existing, 2, DefaultLineEnding),
-              "BlankLinesAroundLabels(before)");
-        }
+        queueSingleBlankLine(Pending, Code, BeginOffset, EndOffset,
+                             DefaultLineEnding,
+                             "BlankLinesAroundLabels(before)");
       }
     }
 
@@ -125,9 +120,8 @@ void collectBlankLineAroundLabelFixes(
       continue;
     }
 
-    const unsigned BeginOffset = Tokens[*ColonIndex].EndOffset;
-    const unsigned EndOffset =
-        Tokens[*Lines[NextLineIndex].FirstNonCommentToken].Offset;
+    const unsigned BeginOffset = Line.ContentEndOffset;
+    const unsigned EndOffset = Tokens[*Lines[NextLineIndex].FirstToken].Offset;
     if (!rangeAffected(
             AffectedRangeMgr, StartOfFile, BeginOffset, EndOffset,
             Tokens[*Lines[NextLineIndex].FirstNonCommentToken].Offset,
@@ -135,12 +129,8 @@ void collectBlankLineAroundLabelFixes(
       continue;
     }
 
-    const StringRef Existing = getExistingText(Code, BeginOffset, EndOffset);
-    if (countNewlines(Existing) < 2) {
-      queueReplacement(Pending, Code, BeginOffset, EndOffset,
-                       buildLeadingWhitespace(Existing, 2, DefaultLineEnding),
-                       "BlankLinesAroundLabels(after)");
-    }
+    queueSingleBlankLine(Pending, Code, BeginOffset, EndOffset,
+                         DefaultLineEnding, "BlankLinesAroundLabels(after)");
   }
 }
 
@@ -177,18 +167,14 @@ void collectSwitchCaseBlockSeparationFixes(
     }
 
     const unsigned BeginOffset = PreviousLine.ContentEndOffset;
-    const unsigned EndOffset = CaseToken.Offset;
+    const unsigned EndOffset = Tokens[*Line.FirstToken].Offset;
     if (!rangeAffected(AffectedRangeMgr, StartOfFile, BeginOffset, EndOffset,
                        CaseToken.Offset, CaseToken.EndOffset)) {
       continue;
     }
 
-    const StringRef Existing = getExistingText(Code, BeginOffset, EndOffset);
-    if (countNewlines(Existing) < 2) {
-      queueReplacement(Pending, Code, BeginOffset, EndOffset,
-                       buildLeadingWhitespace(Existing, 2, DefaultLineEnding),
-                       "SeparateSwitchCaseBlocks");
-    }
+    queueSingleBlankLine(Pending, Code, BeginOffset, EndOffset,
+                         DefaultLineEnding, "SeparateSwitchCaseBlocks");
   }
 }
 
@@ -317,18 +303,13 @@ void collectDeletedFunctionSeparationFixes(
       continue;
 
     const unsigned BeginOffset = Line.ContentEndOffset;
-    const unsigned EndOffset =
-        Tokens[*Lines[NextLineIndex].FirstNonCommentToken].Offset;
+    const unsigned EndOffset = Tokens[*Lines[NextLineIndex].FirstToken].Offset;
     if (!rangeAffected(
             AffectedRangeMgr, StartOfFile, BeginOffset, EndOffset, EndOffset,
             Tokens[*Lines[NextLineIndex].FirstNonCommentToken].EndOffset))
       continue;
-    const StringRef Existing = getExistingText(Code, BeginOffset, EndOffset);
-    if (countNewlines(Existing) >= 2)
-      continue;
-    queueReplacement(Pending, Code, BeginOffset, EndOffset,
-                     buildLeadingWhitespace(Existing, 2, DefaultLineEnding),
-                     "SeparateDeletedFunctions");
+    queueSingleBlankLine(Pending, Code, BeginOffset, EndOffset,
+                         DefaultLineEnding, "SeparateDeletedFunctions");
   }
 }
 
@@ -404,8 +385,7 @@ void collectQualifiedFunctionNameDeindentFixes(
     const std::vector<PhysicalLine> &Lines,
     const std::vector<int> &MatchingParens,
     AffectedRangeManager &AffectedRangeMgr, SourceLocation StartOfFile,
-    StringRef Code, StringRef DefaultLineEnding, unsigned IndentWidth,
-    std::vector<PendingReplacement> &Pending) {
+    StringRef Code, std::vector<PendingReplacement> &Pending) {
   for (unsigned LineIndex = 0; LineIndex < Lines.size(); ++LineIndex) {
     const std::optional<unsigned> LParenIndex =
         findFunctionNameLParenOnLine(Lines[LineIndex], Tokens);
@@ -478,33 +458,6 @@ void collectQualifiedFunctionNameDeindentFixes(
     if (!SafeBlock)
       continue;
 
-    if (Tokens[CloseParenIndex].LineIndex == LineIndex) {
-      const int FirstParameterIndex = nextNonCommentTokenOnLine(
-          Tokens, static_cast<int>(*LParenIndex), LineIndex);
-      int LastParameterIndex = -1;
-      for (unsigned TokenIndex : Lines[LineIndex].Tokens) {
-        if (TokenIndex >= *LParenIndex &&
-            TokenIndex < static_cast<unsigned>(CloseParenIndex) &&
-            Tokens[TokenIndex].Tok.isNot(tok::comment)) {
-          LastParameterIndex = static_cast<int>(TokenIndex);
-        }
-      }
-      if (FirstParameterIndex >= 0 && FirstParameterIndex != CloseParenIndex &&
-          LastParameterIndex >= 0) {
-        const std::string ParameterIndent = BaseIndent.empty()
-                                                ? std::string(IndentWidth, ' ')
-                                                : BaseIndent.str();
-        queueReplacement(Pending, Code, Tokens[*LParenIndex].EndOffset,
-                         Tokens[FirstParameterIndex].Offset,
-                         DefaultLineEnding.str() + ParameterIndent,
-                         "DeindentQualifiedFunctionNames(parameter)");
-        queueReplacement(Pending, Code, Tokens[LastParameterIndex].EndOffset,
-                         Tokens[CloseParenIndex].Offset,
-                         DefaultLineEnding.str() + ParameterIndent,
-                         "DeindentQualifiedFunctionNames(closing-parenthesis)");
-      }
-    }
-
     for (unsigned I = StartLineIndex; I <= EndLineIndex; ++I) {
       const PhysicalLine &Line = Lines[I];
       const unsigned BeginOffset = Line.StartOffset;
@@ -566,7 +519,7 @@ void collectBoundaryFixes(const PostFormatSource &Source,
   if (Extensions.DeindentQualifiedFunctionNames) {
     collectQualifiedFunctionNameDeindentFixes(
         Tokens, Lines, Source.MatchingParens, AffectedRangeMgr, StartOfFile,
-        Code, DefaultLineEnding, Style.IndentWidth, Pending);
+        Code, Pending);
   }
 }
 

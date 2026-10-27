@@ -114,12 +114,14 @@ void queueReplacement(std::vector<PendingReplacement> &Pending, StringRef Code,
                       unsigned BeginOffset, unsigned EndOffset,
                       std::string Text, StringRef Context);
 
-unsigned countNewlines(StringRef Text);
-// Keeps the existing indentation and line-ending style while setting the number
-// of line breaks.
-std::string buildLeadingWhitespace(StringRef ExistingWhitespace,
-                                   unsigned DesiredNewlines,
-                                   StringRef DefaultLineEnding);
+// Rewrites the whitespace in [BeginOffset, EndOffset) to exactly one blank
+// line, keeping the following line's indentation and the file's line endings.
+// Extra blank lines collapse even when MaxEmptyLinesToKeep allows more. Ranges
+// containing anything other than whitespace are left unchanged.
+void queueSingleBlankLine(std::vector<PendingReplacement> &Pending,
+                          StringRef Code, unsigned BeginOffset,
+                          unsigned EndOffset, StringRef DefaultLineEnding,
+                          StringRef Context);
 unsigned measureColumn(StringRef Text, unsigned TabWidth);
 // Extends BaseIndent by Columns, emitting tabs when the style's UseTab setting
 // allows them.

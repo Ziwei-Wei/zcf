@@ -81,13 +81,3 @@ index 0c13356ca..cd1ff70d4 100644
    calculateUnbreakableTailLengths(Line);
    unsigned IndentLevel = Line.Level;
    for (auto *Current = First; Current; Current = Current->Next) {
-@@ -4937,6 +4939,9 @@ bool TokenAnnotator::spaceRequiredBefore(const AnnotatedLine &Line,
-   if (Left.Finalized)
-     return Right.hasWhitespaceBefore();
- 
-+  if (auto Required = extensions::getSpaceRequiredBefore(Line, Right))
-+    return *Required;
-+
-   const bool IsVerilog = Style.isVerilog();
-   assert(!IsVerilog || !IsCpp);
- 
