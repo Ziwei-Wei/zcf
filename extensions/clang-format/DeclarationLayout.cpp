@@ -8,14 +8,6 @@
 namespace clang::format::extensions {
 namespace {
 
-bool isFunctionRefQualifier(const FormatToken &Token) {
-  if (!Token.isOneOf(tok::amp, tok::ampamp))
-    return false;
-  const auto *Previous = Token.getPreviousNonComment();
-  return Previous && Previous->is(tok::r_paren) && Previous->MatchingParen &&
-         Previous->MatchingParen->is(TT_FunctionDeclarationLParen);
-}
-
 bool isQualifiedFunctionComponent(const FormatToken &Token) {
   const auto *Next = Token.getNextNonComment();
   const auto *Previous = Token.getPreviousNonComment();
@@ -50,24 +42,68 @@ bool isExplicitConstructorParameterParen(const FormatToken &LeftParen) {
   return Explicit && Explicit->is(tok::kw_explicit);
 }
 
-void forceQualifiedFunctionParameters(AnnotatedLine &Line) {
+// Upstream does not recognize a declaration whose qualified name is split by
+// comments, such as `ns:: // note` followed by `Type::name(...)`, so its
+// parameter list never receives TT_FunctionDeclarationLParen.
+FormatToken *findCommentSplitQualifiedParameterParen(AnnotatedLine &Line) {
   if (Line.Level != 0 || containsAssignment(Line))
-    return;
+    return nullptr;
+  bool SawComment = false;
   for (auto *Token = Line.First; Token; Token = Token->Next) {
-    if (!isQualifiedFunctionComponent(*Token))
+    if (Token->NestingLevel != 0)
       continue;
-    auto *LeftParen = Token->getNextNonComment();
-    if (!LeftParen || LeftParen->isNot(tok::l_paren) ||
-        !LeftParen->MatchingParen || !LeftParen->Next ||
-        LeftParen->Next == LeftParen->MatchingParen) {
-      return;
+    SawComment |= Token->is(tok::comment);
+    if (Token->isNot(tok::l_paren))
+      continue;
+    const auto *Name = Token->getPreviousNonComment();
+    const auto *Qualifier = Name ? Name->getPreviousNonComment() : nullptr;
+    if (!SawComment || Token->is(TT_FunctionDeclarationLParen) || !Name ||
+        Name->isNot(tok::identifier) || !Qualifier ||
+        Qualifier->isNot(tok::coloncolon)) {
+      return nullptr;
     }
-    LeftParen->Next->MustBreakBefore = true;
-    LeftParen->Next->CanBreakBefore = true;
-    LeftParen->MatchingParen->MustBreakBefore = true;
-    LeftParen->MatchingParen->CanBreakBefore = true;
+    return isNonEmptyParen(*Token) ? Token : nullptr;
+  }
+  return nullptr;
+}
+
+// Applies upstream's BreakAfterReturnType decision, which LibFormat skips for
+// the comment-split declarations found above. The break goes before the first
+// qualified-name component, matching recognized qualified declarations.
+void breakAfterCommentSplitReturnType(AnnotatedLine &Line,
+                                      FormatToken &LeftParen,
+                                      const FormatStyle &FormatStyle) {
+  const bool IsDefinition = !Line.endsWith(tok::semi);
+  switch (FormatStyle.BreakAfterReturnType) {
+  case FormatStyle::RTBS_All:
+  case FormatStyle::RTBS_TopLevel:
+    break;
+  case FormatStyle::RTBS_AllDefinitions:
+  case FormatStyle::RTBS_TopLevelDefinitions:
+    if (!IsDefinition)
+      return;
+    break;
+  default:
     return;
   }
+
+  auto *NameStart = LeftParen.getPreviousNonComment();
+  while (auto *Qualifier = NameStart->getPreviousNonComment()) {
+    if (Qualifier->isNot(tok::coloncolon))
+      break;
+    auto *Scope = Qualifier->getPreviousNonComment();
+    if (Scope && Scope->is(TT_TemplateCloser) && Scope->MatchingParen)
+      Scope = Scope->MatchingParen->getPreviousNonComment();
+    if (!Scope || Scope->isNot(tok::identifier)) {
+      NameStart = Qualifier;
+      break;
+    }
+    NameStart = Scope;
+  }
+  if (NameStart == Line.First || NameStart->MustBreakBefore)
+    return;
+  forceBreakBefore(*NameStart);
+  addForcedBreakLength(*NameStart, FormatStyle);
 }
 
 void forceExplicitConstructorParameters(AnnotatedLine &Line) {
@@ -89,39 +125,19 @@ void forceExplicitConstructorParameters(AnnotatedLine &Line) {
 
 } // namespace
 
-void customizeDeclarationLayout(AnnotatedLine &Line) {
+void customizeDeclarationLayout(AnnotatedLine &Line,
+                                const FormatStyle &FormatStyle) {
   const auto *Style = getActiveExtensionStyleConst();
   if (!Style)
     return;
 
-  if (Style->BreakRefQualifierRequires) {
-    for (auto *Token = Line.First; Token; Token = Token->Next) {
-      if (!isFunctionRefQualifier(*Token))
-        continue;
-      Token->MustBreakBefore = true;
-      Token->CanBreakBefore = true;
-      auto *Requires = Token->getNextNonComment();
-      if (Requires && Requires->is(tok::kw_noexcept)) {
-        Requires->MustBreakBefore = false;
-        Requires->CanBreakBefore = false;
-        Requires->NewlinesBefore = 0;
-        Requires = Requires->getNextNonComment();
-        if (Requires && Requires->is(tok::l_paren) && Requires->MatchingParen) {
-          Requires = Requires->MatchingParen->getNextNonComment();
-        }
-      }
-      if (Requires && Requires->isOneOf(TT_RequiresClause, tok::kw_requires)) {
-        Requires->MustBreakBefore = false;
-        Requires->CanBreakBefore = false;
-        Requires->NewlinesBefore = 0;
-      }
+  if (Style->ForceMultilineFunctionSignatures) {
+    forceExplicitConstructorParameters(Line);
+    if (auto *LeftParen = findCommentSplitQualifiedParameterParen(Line)) {
+      forceMultilineList(*LeftParen);
+      breakAfterCommentSplitReturnType(Line, *LeftParen, FormatStyle);
     }
   }
-
-  if (Style->DeindentQualifiedFunctionNames)
-    forceQualifiedFunctionParameters(Line);
-  if (Style->ForceMultilineFunctionSignatures)
-    forceExplicitConstructorParameters(Line);
 }
 
 std::optional<unsigned> getDeclarationNewLineColumn(const LineState &State,
@@ -135,10 +151,6 @@ std::optional<unsigned> getDeclarationNewLineColumn(const LineState &State,
       isExplicitConstructorParameterParen(*State.NextToken->MatchingParen)) {
     return State.Stack.back().Indent;
   }
-
-  if (Style->BreakRefQualifierRequires &&
-      isFunctionRefQualifier(*State.NextToken))
-    return State.FirstIndent;
 
   if (Style->DeindentQualifiedFunctionNames && State.Line->Level == 0 &&
       State.NextToken->NestingLevel == 0 && !containsAssignment(*State.Line) &&

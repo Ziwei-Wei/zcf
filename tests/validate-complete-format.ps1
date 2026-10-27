@@ -52,17 +52,15 @@ if (-not (Test-Path -LiteralPath $CaseDir -PathType Container)) {
 
 $caseIds = @(
     'qualified-function-name-continuation-indent',
-    'ref-qualifier-requires-layout',
     'compound-requirement-arrow-spacing',
-    'space-after-explicit',
+    'explicit-specifier-layout',
     'blank-lines-around-labels',
     'attributed-label-indentation',
     'preprocessor-closing-comment-alignment-boundary'
 )
 $optionCases = [ordered]@{
     DeindentQualifiedFunctionNames = 'qualified-function-name-continuation-indent'
-    BreakRefQualifierRequires = 'ref-qualifier-requires-layout'
-    SpaceAfterParenthesizedSpecifiers = 'space-after-explicit'
+    SeparateDeletedFunctions = 'explicit-specifier-layout'
     BlankLinesAroundLabels = 'blank-lines-around-labels'
     IndentAttributedLabels = 'attributed-label-indentation'
     SeparateClosingDirectiveComments = 'preprocessor-closing-comment-alignment-boundary'
@@ -116,8 +114,6 @@ if ($LASTEXITCODE -ne 0) {
 }
 foreach ($option in @(
     'DeindentQualifiedFunctionNames',
-    'BreakRefQualifierRequires',
-    'SpaceAfterParenthesizedSpecifiers',
     'BlankLinesAroundLabels',
     'IndentAttributedLabels',
     'SeparateClosingDirectiveComments',
@@ -177,6 +173,15 @@ foreach ($caseId in $caseIds) {
     Write-Host "PASS $caseId"
 }
 
+$deindentOnlyStyle = Join-Path $WorkDir 'deindent-only.clang-format'
+[System.IO.File]::WriteAllText(
+    $deindentOnlyStyle,
+    [System.IO.File]::ReadAllText($StyleFile).Replace(
+        '  ForceMultilineFunctionSignatures: true',
+        '  ForceMultilineFunctionSignatures: false'
+    ),
+    [System.Text.UTF8Encoding]::new($false)
+)
 $regressionContracts = [ordered]@{
     'attributed-label-namespace-indentation' = "file:$StyleFile"
     'qualified-name-nested-continuation' = "file:$StyleFile"
@@ -193,8 +198,6 @@ $regressionContracts = [ordered]@{
     'separation-collapses-extra-blank-lines' =
         '{BasedOnStyle: ZCF, MaxEmptyLinesToKeep: 3}'
     'separation-preserves-comments' = '{BasedOnStyle: ZCF}'
-    'spacing-options-preserve-layout' =
-        '{BasedOnStyle: LLVM, ZCFExtensions: {SpaceParameterPackEllipses: true, SpaceAnnotationsAndFunctionPointers: true, SpaceAfterParenthesizedSpecifiers: true}}'
     'signature-pointer-and-explicit-parameters' =
         '{BasedOnStyle: LLVM, ZCFExtensions: {ForceMultilineFunctionSignatures: true}}'
     'pack-expansion-inheritance' =
@@ -203,6 +206,12 @@ $regressionContracts = [ordered]@{
         '{BasedOnStyle: LLVM, ZCFExtensions: {SeparateDeletedFunctions: true}}'
     'pack-indexed-function-brace' =
         '{BasedOnStyle: LLVM, Standard: c++20, BreakBeforeBraces: Allman, ZCFExtensions: {WrapPackIndexedFunctionBraces: true}}'
+    'qualified-signature-parameters' =
+        '{BasedOnStyle: LLVM, IndentWidth: 4, ZCFExtensions: {ForceMultilineFunctionSignatures: true}}'
+    'qualified-name-deindent-only' = "file:$deindentOnlyStyle"
+    'qualified-return-type-break' = '{BasedOnStyle: ZCF}'
+    'qualified-return-type-definitions-only' =
+        '{BasedOnStyle: ZCF, BreakAfterReturnType: AllDefinitions}'
 }
 foreach ($contract in $regressionContracts.GetEnumerator()) {
     $caseId = [string]$contract.Key
@@ -437,22 +446,17 @@ if ($LASTEXITCODE -ne 0) {
 $enabledPresetOptions = @(
     'ArgumentIndentedClosingParentheses',
     'ForceMultilineFunctionSignatures',
-    'ContextSensitiveBracedInitializers',
     'BlankLineBeforeReturn',
     'BreakConstructorDestructorSpecifiers',
     'CompactSingleArgumentCalls',
     'ExpandNestedAggregateBraces',
     'BreakRequiresExpressionBraces',
-    'SpaceParameterPackEllipses',
     'BreakPackExpansionInheritance',
     'WrapPackIndexedFunctionBraces',
-    'SpaceAnnotationsAndFunctionPointers',
     'NormalizeIntegerLiteralCase',
     'BlankLinesAroundControlStatements',
     'AlignMacrosAcrossDirectives',
     'DeindentQualifiedFunctionNames',
-    'BreakRefQualifierRequires',
-    'SpaceAfterParenthesizedSpecifiers',
     'SeparateDeletedFunctions',
     'BlankLinesAroundLabels',
     'IndentAttributedLabels',
@@ -809,25 +813,25 @@ $multiSectionInput = Join-Path $WorkDir 'multi-section.cpp'
 Language: Cpp
 BasedOnStyle: LLVM
 ZCFExtensions:
-  SpaceAfterParenthesizedSpecifiers: true
+  NormalizeIntegerLiteralCase: true
 ---
 Language: CSharp
 BasedOnStyle: Microsoft
 ZCFExtensions:
-  SpaceAfterParenthesizedSpecifiers: false
+  NormalizeIntegerLiteralCase: false
 '@,
     [System.Text.UTF8Encoding]::new($false)
 )
 [System.IO.File]::WriteAllText(
     $multiSectionInput,
-    "struct Flag { explicit(false) Flag(); };`n",
+    "int value = 0Xff;`n",
     [System.Text.UTF8Encoding]::new($false)
 )
 & $FormatterExe "-style=file:$multiSectionStyle" -i $multiSectionInput
 if ($LASTEXITCODE -ne 0) {
     throw "Multi-section extension formatting failed with exit code $LASTEXITCODE."
 }
-if (-not [System.IO.File]::ReadAllText($multiSectionInput).Contains('explicit (false)')) {
+if (-not [System.IO.File]::ReadAllText($multiSectionInput).Contains('0xFF')) {
     throw 'C++ formatting did not select its language-specific extension style.'
 }
 Write-Host 'PASS language-specific extension style'
@@ -836,13 +840,10 @@ $finalizedInput = Join-Path $WorkDir 'finalized.cpp'
 [System.IO.File]::WriteAllText(
     $finalizedInput,
     @'
-struct Flag
-{
-    explicit(false) Flag();
+int formatted = 0Xff;
 // clang-format off
-    explicit(false) Flag(int);
+int preserved = 0Xff;
 // clang-format on
-};
 '@,
     [System.Text.UTF8Encoding]::new($false)
 )
@@ -851,8 +852,8 @@ if ($LASTEXITCODE -ne 0) {
     throw "Finalized-region formatting failed with exit code $LASTEXITCODE."
 }
 $finalizedText = [System.IO.File]::ReadAllText($finalizedInput)
-if (-not $finalizedText.Contains('explicit (false) Flag()') -or
-    -not $finalizedText.Contains('explicit(false) Flag(int)')) {
+if (-not $finalizedText.Contains('int formatted = 0xFF;') -or
+    -not $finalizedText.Contains('int preserved = 0Xff;')) {
     throw 'Enabled extension formatting changed a clang-format-off region.'
 }
 Write-Host 'PASS finalized region preservation'
@@ -899,14 +900,14 @@ $inheritanceInput = Join-Path $WorkDir 'ordinary-inheritance.cpp'
     [System.Text.UTF8Encoding]::new($false)
 )
 $inheritanceStyle =
-    '{BasedOnStyle: LLVM, ZCFExtensions: {SpaceParameterPackEllipses: true}}'
+    '{BasedOnStyle: LLVM, ZCFExtensions: {BreakPackExpansionInheritance: true}}'
 & $FormatterExe "-style=$inheritanceStyle" -i $inheritanceInput
 if ($LASTEXITCODE -ne 0) {
     throw "Ordinary inheritance isolation failed with exit code $LASTEXITCODE."
 }
 if ((Get-NormalizedText -Path $inheritanceInput) -cne
     'struct Derived : Base {};') {
-    throw 'Parameter-pack spacing changed ordinary inheritance layout.'
+    throw 'Pack-expansion inheritance breaking changed ordinary inheritance layout.'
 }
 Write-Host 'PASS ordinary inheritance isolation'
 
@@ -929,7 +930,7 @@ if ($LASTEXITCODE -ne 0) {
 if ((Get-NormalizedText -Path $deleteExpressionInput).Contains(
     "delete value;`n`n"
 )) {
-    throw 'Declaration-specifier spacing changed an ordinary delete expression.'
+    throw 'Deleted-function separation changed an ordinary delete expression.'
 }
 Write-Host 'PASS delete-expression isolation'
 
@@ -1006,33 +1007,6 @@ if (-not [System.IO.File]::ReadAllText($attributedLabelContextInput).Contains(
 }
 Write-Host 'PASS attributed-label context indentation'
 
-$noexceptRequiresInput = Join-Path $WorkDir 'ref-noexcept-requires.cpp'
-[System.IO.File]::WriteAllText(
-    $noexceptRequiresInput,
-    @'
-template <typename T>
-struct Value
-{
-    auto get() & noexcept requires(sizeof(T) > 0)
-    {
-        return T{};
-    }
-};
-'@,
-    [System.Text.UTF8Encoding]::new($false)
-)
-& $FormatterExe "-style=file:$StyleFile" -i $noexceptRequiresInput
-if ($LASTEXITCODE -ne 0) {
-    throw "Ref/noexcept/requires formatting failed with exit code $LASTEXITCODE."
-}
-$noexceptRequiresText = [System.IO.File]::ReadAllText($noexceptRequiresInput)
-if (-not $noexceptRequiresText.Contains(
-    "& noexcept requires(sizeof(T) > 0)"
-)) {
-    throw 'Ref-qualifier policy split noexcept from its trailing requires clause.'
-}
-Write-Host 'PASS ref/noexcept/requires grouping'
-
 $canonicalActual = Join-Path $WorkDir 'canonical.actual.cpp'
 Copy-Item -LiteralPath $CanonicalFixture -Destination $canonicalActual
 & $FormatterExe "-style=file:$StyleFile" -i $canonicalActual
@@ -1050,4 +1024,4 @@ if ($canonicalFirstHash -cne $canonicalSecondHash) {
 }
 Write-Host 'PASS canonical complete-policy idempotence'
 
-Write-Host "Validated 6 specialized extension contracts, 4 reviewed preset contracts, $($regressionContracts.Count) regression contracts, and 1 reviewed native contract."
+Write-Host "Validated $($optionCases.Count) specialized extension contracts, 4 reviewed preset contracts, $($regressionContracts.Count) regression contracts, and 1 reviewed native contract."

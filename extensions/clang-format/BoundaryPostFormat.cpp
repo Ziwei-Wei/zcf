@@ -385,8 +385,7 @@ void collectQualifiedFunctionNameDeindentFixes(
     const std::vector<PhysicalLine> &Lines,
     const std::vector<int> &MatchingParens,
     AffectedRangeManager &AffectedRangeMgr, SourceLocation StartOfFile,
-    StringRef Code, StringRef DefaultLineEnding, unsigned IndentWidth,
-    std::vector<PendingReplacement> &Pending) {
+    StringRef Code, std::vector<PendingReplacement> &Pending) {
   for (unsigned LineIndex = 0; LineIndex < Lines.size(); ++LineIndex) {
     const std::optional<unsigned> LParenIndex =
         findFunctionNameLParenOnLine(Lines[LineIndex], Tokens);
@@ -459,33 +458,6 @@ void collectQualifiedFunctionNameDeindentFixes(
     if (!SafeBlock)
       continue;
 
-    if (Tokens[CloseParenIndex].LineIndex == LineIndex) {
-      const int FirstParameterIndex = nextNonCommentTokenOnLine(
-          Tokens, static_cast<int>(*LParenIndex), LineIndex);
-      int LastParameterIndex = -1;
-      for (unsigned TokenIndex : Lines[LineIndex].Tokens) {
-        if (TokenIndex >= *LParenIndex &&
-            TokenIndex < static_cast<unsigned>(CloseParenIndex) &&
-            Tokens[TokenIndex].Tok.isNot(tok::comment)) {
-          LastParameterIndex = static_cast<int>(TokenIndex);
-        }
-      }
-      if (FirstParameterIndex >= 0 && FirstParameterIndex != CloseParenIndex &&
-          LastParameterIndex >= 0) {
-        const std::string ParameterIndent = BaseIndent.empty()
-                                                ? std::string(IndentWidth, ' ')
-                                                : BaseIndent.str();
-        queueReplacement(Pending, Code, Tokens[*LParenIndex].EndOffset,
-                         Tokens[FirstParameterIndex].Offset,
-                         DefaultLineEnding.str() + ParameterIndent,
-                         "DeindentQualifiedFunctionNames(parameter)");
-        queueReplacement(Pending, Code, Tokens[LastParameterIndex].EndOffset,
-                         Tokens[CloseParenIndex].Offset,
-                         DefaultLineEnding.str() + ParameterIndent,
-                         "DeindentQualifiedFunctionNames(closing-parenthesis)");
-      }
-    }
-
     for (unsigned I = StartLineIndex; I <= EndLineIndex; ++I) {
       const PhysicalLine &Line = Lines[I];
       const unsigned BeginOffset = Line.StartOffset;
@@ -547,7 +519,7 @@ void collectBoundaryFixes(const PostFormatSource &Source,
   if (Extensions.DeindentQualifiedFunctionNames) {
     collectQualifiedFunctionNameDeindentFixes(
         Tokens, Lines, Source.MatchingParens, AffectedRangeMgr, StartOfFile,
-        Code, DefaultLineEnding, Style.IndentWidth, Pending);
+        Code, Pending);
   }
 }
 

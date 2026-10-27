@@ -70,17 +70,6 @@ void compactCallIfItFits(FormatToken &LeftParen,
   }
 }
 
-bool isCtorMemberBracedInitializer(const AnnotatedLine &Line,
-                                   const FormatToken &LeftBrace) {
-  const auto *Member = LeftBrace.getPreviousNonComment();
-  if (!Member || Member->isNot(tok::identifier))
-    return false;
-  const auto *BeforeMember = Member->getPreviousNonComment();
-  return (BeforeMember && BeforeMember->isOneOf(TT_CtorInitializerColon,
-                                                TT_CtorInitializerComma)) ||
-         Member == Line.First;
-}
-
 } // namespace
 
 void customizeAnnotatedLine(AnnotatedLine &Line,
@@ -102,21 +91,7 @@ void customizeAnnotatedLine(AnnotatedLine &Line,
     }
   }
   customizeSyntaxLayout(Line, FormatStyle);
-  customizeDeclarationLayout(Line);
-}
-
-std::optional<bool> getSpaceRequiredBefore(const AnnotatedLine &Line,
-                                           const FormatToken &Right) {
-  const auto *Style = getActiveExtensionStyleConst();
-  if (!Style)
-    return std::nullopt;
-  if (Style->ContextSensitiveBracedInitializers && Right.is(tok::l_brace) &&
-      Right.is(BK_BracedInit) && isCtorMemberBracedInitializer(Line, Right)) {
-    return false;
-  }
-  if (auto Required = getDeclaratorSpaceRequiredBefore(Line, Right))
-    return Required;
-  return getSpecifierSpaceRequiredBefore(Line, Right);
+  customizeDeclarationLayout(Line, FormatStyle);
 }
 
 std::optional<unsigned>
