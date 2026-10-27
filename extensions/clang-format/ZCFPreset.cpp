@@ -37,6 +37,7 @@ bool getExtensionPredefinedStyle(llvm::StringRef Name,
   Preset.AlignArrayOfStructures = FormatStyle::AIAS_Right;
   Preset.AlignConsecutiveAssignments.Enabled = false;
   Preset.AlignOperands = FormatStyle::OAS_DontAlign;
+  Preset.BraceWrapping.BeforeLambdaBody = true;
   Preset.BreakBeforeBinaryOperators = FormatStyle::BOS_All;
   Preset.BreakBinaryOperations = FormatStyle::BBO_RespectPrecedence;
   Preset.PenaltyBreakAssignment = 1000;

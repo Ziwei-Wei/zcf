@@ -18,6 +18,5 @@ compute_score()
             + channelOffsetWithAnExtremelyLongDescriptiveNameThatForcesAdditiveExpansion
         )
         % veryLongRingSizeWithLongDescriptiveName;
-
     return score;
 }

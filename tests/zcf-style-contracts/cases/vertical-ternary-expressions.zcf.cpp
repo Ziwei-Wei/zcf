@@ -37,6 +37,5 @@ choose_value(
         true_value_with_an_extremely_long_descriptive_name
         :
         false_value_with_an_extremely_long_descriptive_name;
-
     return compact + compact_in_wrapped_call + nested_assignment_condition + expanded_result_with_a_long_descriptive_name;
 }

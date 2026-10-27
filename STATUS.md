@@ -146,6 +146,11 @@ by `#if` are left together. Statement boundaries come from raw tokens, because
 LLVM 20 can merge a pack-indexed function with the following declaration across
 `#endif`/`#if`.
 
+The ZCF preset sets `BraceWrapping.BeforeLambdaBody: true`, so a multi-line
+lambda body starts with its brace on its own line, and no longer enables
+`BlankLineBeforeReturn`; blank lines before return statements are left to the
+author unless the option is set explicitly.
+
 `BodyDrivenLambdaExpansion` expands only the body of a multi-statement or
 overflowing lambda when its header fits; parameters are exploded one per line,
 with the brace on its own line, only when the header overflows or the author

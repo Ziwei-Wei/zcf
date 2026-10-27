@@ -197,7 +197,7 @@ $regressionContracts = [ordered]@{
         '{BasedOnStyle: LLVM, IndentWidth: 4, TabWidth: 4, UseTab: ForIndentation, ZCFExtensions: {ExpandNestedAggregateBraces: true}}'
     'lambda-chain-is-not-aggregate' = "file:$StyleFile"
     'separation-collapses-extra-blank-lines' =
-        '{BasedOnStyle: ZCF, MaxEmptyLinesToKeep: 3}'
+        '{BasedOnStyle: ZCF, MaxEmptyLinesToKeep: 3, ZCFExtensions: {BlankLineBeforeReturn: true}}'
     'separation-preserves-comments' = '{BasedOnStyle: ZCF}'
     'signature-pointer-and-explicit-parameters' =
         '{BasedOnStyle: LLVM, ZCFExtensions: {ForceMultilineFunctionSignatures: true}}'
@@ -467,7 +467,6 @@ if ($LASTEXITCODE -ne 0) {
 $enabledPresetOptions = @(
     'ArgumentIndentedClosingParentheses',
     'ForceMultilineFunctionSignatures',
-    'BlankLineBeforeReturn',
     'BreakConstructorDestructorSpecifiers',
     'CompactSingleArgumentCalls',
     'ExpandNestedAggregateBraces',
@@ -507,6 +506,9 @@ foreach ($setting in @(
     if (-not $presetDump.Contains($setting)) {
         throw "ZCF preset is missing '$setting'."
     }
+}
+if ($presetDump -notmatch '(?s)BraceWrapping:.*?BeforeLambdaBody:\s+true') {
+    throw 'ZCF preset did not wrap lambda body braces.'
 }
 if ($presetDump -notmatch
     '(?s)AlignConsecutiveAssignments:.*?Enabled:\s+false') {
@@ -664,22 +666,30 @@ if (-not (Get-NormalizedText -Path $commentArithmeticInput).Contains(
 }
 Write-Host 'PASS comment-bearing arithmetic safety'
 
-$overrideInput = Join-Path $WorkDir 'preset-override.cpp'
-[System.IO.File]::WriteAllText(
-    $overrideInput,
-    "int run() { work(); return 1; }`n",
-    [System.Text.UTF8Encoding]::new($false)
-)
-$overrideStyle =
-    '{BasedOnStyle: ZCF, ZCFExtensions: {BlankLineBeforeReturn: false}}'
-& $FormatterExe "-style=$overrideStyle" -i $overrideInput
-if ($LASTEXITCODE -ne 0) {
-    throw "ZCF option override failed with exit code $LASTEXITCODE."
-}
-if ((Get-NormalizedText -Path $overrideInput).Contains(
-    "work();`n`n    return 1;"
+# The preset leaves return separation to the author; an explicit override
+# enables it.
+foreach ($override in @(
+    @{ Style = '{BasedOnStyle: ZCF}'; Separated = $false },
+    @{
+        Style = '{BasedOnStyle: ZCF, ZCFExtensions: {BlankLineBeforeReturn: true}}'
+        Separated = $true
+    }
 )) {
-    throw 'ZCF option override did not disable return separation.'
+    $overrideInput = Join-Path $WorkDir 'preset-override.cpp'
+    [System.IO.File]::WriteAllText(
+        $overrideInput,
+        "int run() { work(); return 1; }`n",
+        [System.Text.UTF8Encoding]::new($false)
+    )
+    & $FormatterExe "-style=$($override.Style)" -i $overrideInput
+    if ($LASTEXITCODE -ne 0) {
+        throw "ZCF option override failed with exit code $LASTEXITCODE."
+    }
+    if ((Get-NormalizedText -Path $overrideInput).Contains(
+        "work();`n`n    return 1;"
+    ) -ne $override.Separated) {
+        throw "Return separation is wrong for $($override.Style)."
+    }
 }
 Write-Host 'PASS ZCF preset option override'
 
