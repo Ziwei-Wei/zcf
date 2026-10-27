@@ -119,6 +119,9 @@ Parameter breaking for declarations whose qualified name is split by comments
 (which upstream does not recognize as declarations) belongs to
 `ForceMultilineFunctionSignatures`, which also applies the style's
 `BreakAfterReturnType` to them as upstream does for recognized declarations.
+It also keeps the `=` of `= delete`, `= default`, and pure-virtual `= 0` on the
+parameter list's closing-parenthesis line; with `BreakBeforeBinaryOperators`
+upstream otherwise breaks before that `=` whenever the return type is broken.
 
 `BreakRefQualifierRequires`, `ContextSensitiveBracedInitializers`, and the
 three spacing options (`SpaceParameterPackEllipses`,

@@ -210,6 +210,8 @@ $regressionContracts = [ordered]@{
         '{BasedOnStyle: LLVM, ZCFExtensions: {SeparatePreprocessorConditionalBlocks: true}}'
     'pack-indexed-function-brace' =
         '{BasedOnStyle: LLVM, Standard: c++20, BreakBeforeBraces: Allman, ZCFExtensions: {WrapPackIndexedFunctionBraces: true}}'
+    'function-specifier-assignment' =
+        '{BasedOnStyle: LLVM, BreakAfterReturnType: All, BreakBeforeBinaryOperators: All, ZCFExtensions: {ForceMultilineFunctionSignatures: true}}'
     'qualified-signature-parameters' =
         '{BasedOnStyle: LLVM, IndentWidth: 4, ZCFExtensions: {ForceMultilineFunctionSignatures: true}}'
     'qualified-name-deindent-only' = "file:$deindentOnlyStyle"

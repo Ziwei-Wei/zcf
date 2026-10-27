@@ -249,6 +249,37 @@ void breakFunctionPointerParameters(AnnotatedLine &Line) {
   }
 }
 
+// Keeps `= delete`, `= default`, and pure-virtual `= 0` on the line of the
+// parameter list's closing parenthesis. With BreakBeforeBinaryOperators the
+// upstream indenter otherwise breaks before that `=` whenever the return type
+// was broken onto its own line.
+void attachFunctionSpecifierAssignment(AnnotatedLine &Line) {
+  const FormatToken *DeclarationParen = nullptr;
+  for (auto *Token = Line.First; Token; Token = Token->Next) {
+    if (!DeclarationParen) {
+      if (Token->is(TT_FunctionDeclarationLParen) && Token->MatchingParen &&
+          Token->NestingLevel == 0) {
+        DeclarationParen = Token->MatchingParen;
+        Token = Token->MatchingParen;
+      }
+      continue;
+    }
+    if (Token->NestingLevel != 0 || Token->isNot(tok::equal) || !Token->Next)
+      continue;
+    const FormatToken &Value = *Token->Next;
+    const bool Specifier =
+        (Value.isOneOf(tok::kw_delete, tok::kw_default) &&
+         Value.Next && Value.Next->isOneOf(tok::semi, tok::l_paren)) ||
+        (Value.is(tok::numeric_constant) && Value.TokenText == "0" &&
+         Value.Next && Value.Next->is(tok::semi));
+    if (Specifier) {
+      Token->MustBreakBefore = false;
+      Token->CanBreakBefore = false;
+    }
+    return;
+  }
+}
+
 bool isArithmeticOperator(const FormatToken &Token) {
   return Token.is(TT_BinaryOperator) &&
          Token.isOneOf(tok::plus, tok::minus, tok::star, tok::slash,
@@ -1040,8 +1071,10 @@ void customizeSyntaxLayout(AnnotatedLine &Line,
     breakPackExpansionInheritance(Line);
   if (Style->WrapPackIndexedFunctionBraces)
     wrapPackIndexedFunctionBrace(Line, FormatStyle);
-  if (Style->ForceMultilineFunctionSignatures)
+  if (Style->ForceMultilineFunctionSignatures) {
     breakFunctionPointerParameters(Line);
+    attachFunctionSpecifierAssignment(Line);
+  }
 }
 
 std::optional<unsigned> getSyntaxNewLineColumn(const LineState &State,
