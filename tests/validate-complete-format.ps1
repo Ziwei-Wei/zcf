@@ -316,6 +316,18 @@ $presetRuleContracts = @(
         Case = 'scope-style-nested-templates'
         Input = Join-Path $CaseDir 'scope-style-nested-templates.input.cpp'
         Expected = Join-Path $CaseDir 'scope-style-nested-templates.zcf.cpp'
+    },
+    @{
+        Option = 'BlankLinesAroundLabels'
+        Case = 'label-blank-line-separation'
+        Input = Join-Path $CaseDir 'label-blank-line-separation.input.cpp'
+        Expected = Join-Path $CaseDir 'label-blank-line-separation.zcf.cpp'
+    },
+    @{
+        Option = 'ProgressiveCallExpansion'
+        Case = 'commented-call-compaction'
+        Input = Join-Path $CaseDir 'commented-call-compaction.input.cpp'
+        Expected = Join-Path $CaseDir 'commented-call-compaction.zcf.cpp'
     }
 )
 foreach ($preset in $presetStyles.GetEnumerator()) {
@@ -1024,4 +1036,4 @@ if ($canonicalFirstHash -cne $canonicalSecondHash) {
 }
 Write-Host 'PASS canonical complete-policy idempotence'
 
-Write-Host "Validated $($optionCases.Count) specialized extension contracts, 4 reviewed preset contracts, $($regressionContracts.Count) regression contracts, and 1 reviewed native contract."
+Write-Host "Validated $($optionCases.Count) specialized extension contracts, $($presetRuleContracts.Count) reviewed preset contracts, $($regressionContracts.Count) regression contracts, and 1 reviewed native contract."
