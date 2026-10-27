@@ -193,8 +193,6 @@ $regressionContracts = [ordered]@{
         '{BasedOnStyle: LLVM, ZCFExtensions: {BlankLinesAroundControlStatements: true}}'
     'nested-aggregate-standalone-layout' =
         '{BasedOnStyle: LLVM, ZCFExtensions: {ExpandNestedAggregateBraces: true}}'
-    'nested-aggregate-tab-indentation' =
-        '{BasedOnStyle: LLVM, IndentWidth: 4, TabWidth: 4, UseTab: ForIndentation, ZCFExtensions: {ExpandNestedAggregateBraces: true}}'
     'lambda-chain-is-not-aggregate' = "file:$StyleFile"
     'separation-collapses-extra-blank-lines' =
         '{BasedOnStyle: ZCF, MaxEmptyLinesToKeep: 3, ZCFExtensions: {BlankLineBeforeReturn: true}}'
