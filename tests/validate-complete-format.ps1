@@ -118,7 +118,6 @@ foreach ($option in @(
     'SeparateClosingDirectiveComments',
     'BodyDrivenLambdaExpansion',
     'VerticalTernaryExpressions',
-    'SeparateSwitchCaseBlocks',
     'ScopeStyleNestedTemplates',
     'SeparateDefinitionBlocksFromAll',
     'SeparateFunctionDeclarations',
@@ -322,12 +321,6 @@ $presetRuleContracts = @(
         Expected = Join-Path $CaseDir 'vertical-ternary-expressions.zcf.cpp'
     },
     @{
-        Option = 'SeparateSwitchCaseBlocks'
-        Case = 'switch-case-block-separation'
-        Input = Join-Path $CaseDir 'switch-case-block-separation.input.cpp'
-        Expected = Join-Path $CaseDir 'switch-case-block-separation.zcf.cpp'
-    },
-    @{
         Option = 'ScopeStyleNestedTemplates'
         Case = 'scope-style-nested-templates'
         Input = Join-Path $CaseDir 'scope-style-nested-templates.input.cpp'
@@ -517,7 +510,6 @@ $enabledPresetOptions = @(
     'ProgressiveArithmeticExpansion',
     'BodyDrivenLambdaExpansion',
     'VerticalTernaryExpressions',
-    'SeparateSwitchCaseBlocks',
     'ScopeStyleNestedTemplates'
 )
 foreach ($option in $enabledPresetOptions) {

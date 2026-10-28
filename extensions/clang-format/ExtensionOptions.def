@@ -26,7 +26,6 @@ ZCF_EXTENSION_OPTION(ProgressiveCallExpansion)
 ZCF_EXTENSION_OPTION(ProgressiveArithmeticExpansion)
 ZCF_EXTENSION_OPTION(BodyDrivenLambdaExpansion)
 ZCF_EXTENSION_OPTION(VerticalTernaryExpressions)
-ZCF_EXTENSION_OPTION(SeparateSwitchCaseBlocks)
 ZCF_EXTENSION_OPTION(ScopeStyleNestedTemplates)
 
 #undef ZCF_EXTENSION_OPTION

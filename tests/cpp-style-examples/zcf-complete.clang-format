@@ -173,6 +173,5 @@ ZCFExtensions:
   ProgressiveArithmeticExpansion: true
   BodyDrivenLambdaExpansion: true
   VerticalTernaryExpressions: true
-  SeparateSwitchCaseBlocks: true
   ScopeStyleNestedTemplates: true
 ...

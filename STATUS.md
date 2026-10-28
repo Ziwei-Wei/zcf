@@ -5,7 +5,7 @@ Last updated: 2026-10-08
 ## Complete
 
 - `zcf` is a single clang-format-compatible native executable.
-- The reviewed C++ policy provides 23 independently configurable extensions.
+- The reviewed C++ policy provides 22 independently configurable extensions.
 - Upstream LLVM 20.1.8 remains pinned and pristine behind a generated overlay.
 - `pipx install zcf` packages the native executable and exposes:
   - `zcf`
@@ -112,7 +112,7 @@ replacement set (`PostFormatSource`) serve both the structural and boundary
 rules. Duplicated layout helpers were merged, which also fixed
 `ForceMultilineFunctionSignatures` leaving multiple parameters bin-packed on one
 line outside the preset (where `BinPackParameters: OnePerLine` had masked it).
-The 23 extension options are declared once in `ExtensionOptions.def`.
+The 22 extension options are declared once in `ExtensionOptions.def`.
 
 `DeindentQualifiedFunctionNames` now changes only qualified-name indentation.
 Parameter breaking for declarations whose qualified name is split by comments
@@ -130,12 +130,13 @@ were removed from the policy. Their constructs now follow upstream spacing and
 layout, and the bridge patch no longer needs a space-required hook.
 `SeparateDeletedFunctions` was removed as well: `SeparateFunctionDeclarations`
 separates `= delete` declarations on both sides, which produced identical output
-on every contract and on the canonical fixture. `BlankLineBeforeReturn` was
-removed too; blank lines before return statements are left to the author.
+on every contract and on the canonical fixture. `BlankLineBeforeReturn` and
+`SeparateSwitchCaseBlocks` were removed too; blank lines before return
+statements and between switch case blocks are left to the author.
 
 The blank-line separation rules (`BlankLinesAroundControlStatements`,
-`BlankLinesAroundLabels`, `SeparateSwitchCaseBlocks`,
-`SeparateDefinitionBlocksFromAll`, `SeparateFunctionDeclarations`, and
+`BlankLinesAroundLabels`, `SeparateDefinitionBlocksFromAll`,
+`SeparateFunctionDeclarations`, and
 `SeparatePreprocessorConditionalBlocks`) produce exactly one blank line,
 collapsing extras even when `MaxEmptyLinesToKeep` allows more. They
 rewrite only whitespace between lines, so adjacent comments are preserved.

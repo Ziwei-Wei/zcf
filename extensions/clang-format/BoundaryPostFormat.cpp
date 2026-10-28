@@ -134,50 +134,6 @@ void collectBlankLineAroundLabelFixes(
   }
 }
 
-void collectSwitchCaseBlockSeparationFixes(
-    const std::vector<TokenInfo> &Tokens,
-    const std::vector<PhysicalLine> &Lines,
-    AffectedRangeManager &AffectedRangeMgr, SourceLocation StartOfFile,
-    StringRef Code, StringRef DefaultLineEnding,
-    std::vector<PendingReplacement> &Pending) {
-  for (const PhysicalLine &Line : Lines) {
-    if (Line.BlankText || Line.CommentOnly || Line.InPPDirective ||
-        Line.Disabled || !Line.FirstNonCommentToken) {
-      continue;
-    }
-
-    const TokenInfo &CaseToken = Tokens[*Line.FirstNonCommentToken];
-    if (CaseToken.Text != "case" && CaseToken.Text != "default")
-      continue;
-
-    const unsigned PreviousLineIndex =
-        previousNonBlankLine(Lines, CaseToken.LineIndex);
-    if (PreviousLineIndex >= Lines.size())
-      continue;
-    const PhysicalLine &PreviousLine = Lines[PreviousLineIndex];
-    if (PreviousLine.CommentOnly || PreviousLine.Disabled ||
-        !PreviousLine.LastNonCommentToken) {
-      continue;
-    }
-
-    const TokenInfo &PreviousToken = Tokens[*PreviousLine.LastNonCommentToken];
-    if (PreviousToken.Tok.isNot(tok::r_brace) ||
-        PreviousToken.BraceDepth != CaseToken.BraceDepth + 1) {
-      continue;
-    }
-
-    const unsigned BeginOffset = PreviousLine.ContentEndOffset;
-    const unsigned EndOffset = Tokens[*Line.FirstToken].Offset;
-    if (!rangeAffected(AffectedRangeMgr, StartOfFile, BeginOffset, EndOffset,
-                       CaseToken.Offset, CaseToken.EndOffset)) {
-      continue;
-    }
-
-    queueSingleBlankLine(Pending, Code, BeginOffset, EndOffset,
-                         DefaultLineEnding, "SeparateSwitchCaseBlocks");
-  }
-}
-
 void collectAttributedLabelIndentFixes(
     const std::vector<TokenInfo> &Tokens,
     const std::vector<PhysicalLine> &Lines,
@@ -455,11 +411,6 @@ void collectBoundaryFixes(const PostFormatSource &Source,
     collectBlankLineAroundLabelFixes(Tokens, Lines, AffectedRangeMgr,
                                      StartOfFile, Code, DefaultLineEnding,
                                      Pending);
-  }
-  if (Extensions.SeparateSwitchCaseBlocks) {
-    collectSwitchCaseBlockSeparationFixes(Tokens, Lines, AffectedRangeMgr,
-                                          StartOfFile, Code, DefaultLineEnding,
-                                          Pending);
   }
   if (Extensions.IndentAttributedLabels) {
     collectAttributedLabelIndentFixes(Tokens, Lines, Source.MatchingSquares,
