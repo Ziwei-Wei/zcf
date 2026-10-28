@@ -165,7 +165,6 @@ ZCFExtensions:
   BlankLinesAroundControlStatements: true
   AlignMacrosAcrossDirectives: true
   DeindentQualifiedFunctionNames: true
-  SeparateDeletedFunctions: true
   SeparateDefinitionBlocksFromAll: true
   SeparateFunctionDeclarations: true
   SeparatePreprocessorConditionalBlocks: true

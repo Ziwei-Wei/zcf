@@ -60,7 +60,6 @@ $caseIds = @(
 )
 $optionCases = [ordered]@{
     DeindentQualifiedFunctionNames = 'qualified-function-name-continuation-indent'
-    SeparateDeletedFunctions = 'explicit-specifier-layout'
     BlankLinesAroundLabels = 'blank-lines-around-labels'
     IndentAttributedLabels = 'attributed-label-indentation'
     SeparateClosingDirectiveComments = 'preprocessor-closing-comment-alignment-boundary'
@@ -204,7 +203,7 @@ $regressionContracts = [ordered]@{
     'pack-expansion-inheritance' =
         '{BasedOnStyle: LLVM, ZCFExtensions: {BreakPackExpansionInheritance: true}}'
     'separate-deleted-functions' =
-        '{BasedOnStyle: LLVM, ZCFExtensions: {SeparateDeletedFunctions: true}}'
+        '{BasedOnStyle: LLVM, ZCFExtensions: {SeparateFunctionDeclarations: true}}'
     'definition-separation-guards' =
         '{BasedOnStyle: LLVM, ZCFExtensions: {SeparateDefinitionBlocksFromAll: true}}'
     'function-declarations-only' =
@@ -358,6 +357,12 @@ $presetRuleContracts = @(
     },
     @{
         Option = 'ProgressiveCallExpansion'
+        Case = 'call-compaction-after-assignment'
+        Input = Join-Path $CaseDir 'call-compaction-after-assignment.input.cpp'
+        Expected = Join-Path $CaseDir 'call-compaction-after-assignment.zcf.cpp'
+    },
+    @{
+        Option = 'ProgressiveCallExpansion'
         Case = 'commented-call-compaction'
         Input = Join-Path $CaseDir 'commented-call-compaction.input.cpp'
         Expected = Join-Path $CaseDir 'commented-call-compaction.zcf.cpp'
@@ -501,7 +506,6 @@ $enabledPresetOptions = @(
     'BlankLinesAroundControlStatements',
     'AlignMacrosAcrossDirectives',
     'DeindentQualifiedFunctionNames',
-    'SeparateDeletedFunctions',
     'SeparateDefinitionBlocksFromAll',
     'SeparateFunctionDeclarations',
     'SeparatePreprocessorConditionalBlocks',
@@ -814,7 +818,6 @@ $overlappingOptions = @{
         'BlankLineBeforeReturn',
         'BlankLinesAroundControlStatements'
     )
-    SeparateDeletedFunctions = @('SeparateFunctionDeclarations')
 }
 foreach ($entry in $optionCases.GetEnumerator()) {
     $option = [string]$entry.Key
