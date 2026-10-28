@@ -51,7 +51,7 @@ index aba7db6dd..c85a41ef7 100644
      return false;
  
    Style->Language = Language;
-@@ -3837,9 +3840,15 @@ reformat(const FormatStyle &Style, StringRef Code,
+@@ -3837,9 +3840,27 @@ reformat(const FormatStyle &Style, StringRef Code,
      });
    }
  
@@ -62,6 +62,18 @@ index aba7db6dd..c85a41ef7 100644
      return Formatter(Env, Expanded, Status).process();
    });
 +  Passes.emplace_back([&](const Environment &Env) {
++    return extensions::runExtensionPostFormatPass(Env, Expanded);
++  });
++  bool ExtensionReformat = false;
++  Passes.emplace_back([&](const Environment &Env) {
++    ExtensionReformat = extensions::extensionNeedsReformat(Env, Expanded);
++    if (!ExtensionReformat)
++      return std::pair<tooling::Replacements, unsigned>();
++    return Formatter(Env, Expanded, Status).process();
++  });
++  Passes.emplace_back([&](const Environment &Env) {
++    if (!ExtensionReformat)
++      return std::pair<tooling::Replacements, unsigned>();
 +    return extensions::runExtensionPostFormatPass(Env, Expanded);
 +  });
  

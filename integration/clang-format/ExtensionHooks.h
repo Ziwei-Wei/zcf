@@ -31,6 +31,7 @@ std::optional<unsigned> getExtensionNewLineColumn(const LineState &State,
                                                   const FormatStyle &Style);
 std::pair<tooling::Replacements, unsigned>
 runExtensionPreFormatPass(const Environment &Env, const FormatStyle &Style);
+bool extensionNeedsReformat(const Environment &Env, const FormatStyle &Style);
 std::pair<tooling::Replacements, unsigned>
 runExtensionPostFormatPass(const Environment &Env, const FormatStyle &Style);
 

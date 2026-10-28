@@ -26,6 +26,8 @@ struct MacroAlignEntry {
 struct AggregateNode;
 
 struct AggregateElement {
+  // `.name` for a designated initializer element.
+  std::string Designator;
   std::string LeafText;
   std::unique_ptr<AggregateNode> Child;
 
@@ -36,6 +38,8 @@ struct AggregateNode {
   unsigned OpenTokenIndex = 0;
   unsigned CloseTokenIndex = 0;
   unsigned MaxBraceLevels = 1;
+  // An element had author line breaks joined, so the rendering must fit.
+  bool JoinedLeaf = false;
   std::vector<AggregateElement> Elements;
 };
 
@@ -47,11 +51,6 @@ bool isConditionalDirectiveName(StringRef Text) {
   return Text == "if" || Text == "ifdef" || Text == "ifndef" ||
          Text == "elif" || Text == "elifdef" || Text == "elifndef" ||
          Text == "else" || Text == "endif";
-}
-
-bool isInlineLeafSafeToken(const TokenInfo &Token) {
-  return Token.Tok.isNot(tok::comment) && Token.Tok.isNot(tok::semi) &&
-         Token.Tok.isNot(tok::l_brace) && Token.Tok.isNot(tok::r_brace);
 }
 
 bool containsCodeAfterOnSameLine(const std::vector<TokenInfo> &Tokens,
@@ -403,8 +402,9 @@ void collectMacroAlignmentFixes(const std::vector<TokenInfo> &Tokens,
                                 const std::vector<PhysicalLine> &Lines,
                                 AffectedRangeManager &AffectedRangeMgr,
                                 SourceLocation StartOfFile, StringRef Code,
-                                unsigned TabWidth,
+                                const FormatStyle &Style,
                                 std::vector<PendingReplacement> &Pending) {
+  const unsigned TabWidth = std::max(Style.TabWidth, 1u);
   std::vector<MacroAlignEntry> Group;
   auto Flush = [&] {
     flushMacroGroup(Group, Code, Tokens, AffectedRangeMgr, StartOfFile,
@@ -412,7 +412,17 @@ void collectMacroAlignmentFixes(const std::vector<TokenInfo> &Tokens,
     Group.clear();
   };
 
+  // Blank and comment-only lines end a run unless the style's
+  // AlignConsecutiveMacros allows aligning across them.
   for (const PhysicalLine &Line : Lines) {
+    if (Line.BlankText && !Line.Disabled &&
+        Style.AlignConsecutiveMacros.AcrossEmptyLines) {
+      continue;
+    }
+    if (Line.CommentOnly && !Line.Disabled &&
+        Style.AlignConsecutiveMacros.AcrossComments) {
+      continue;
+    }
     if (Line.BlankText || Line.CommentOnly || Line.Disabled ||
         !Line.FirstNonCommentToken) {
       Flush();
@@ -450,6 +460,68 @@ void collectMacroAlignmentFixes(const std::vector<TokenInfo> &Tokens,
   }
 
   Flush();
+}
+
+// Joins a leaf's tokens. Whitespace LibFormat placed on one line is kept; a
+// line break between tokens is joined so that an element the author split,
+// such as a call, is rendered on one line. Breaks next to braces or angle
+// brackets are rejected because their joined spacing is not known here.
+std::optional<std::string> joinLeafTokens(const std::vector<TokenInfo> &Tokens,
+                                          unsigned Begin, unsigned End,
+                                          StringRef Code,
+                                          bool NormalizeIntegerLiterals,
+                                          bool &Joined) {
+  std::string Text;
+  for (unsigned Index = Begin; Index <= End; ++Index) {
+    const TokenInfo &Token = Tokens[Index];
+    if (Token.Disabled || Token.Tok.is(tok::comment))
+      return std::nullopt;
+    if (Index != Begin) {
+      const TokenInfo &Previous = Tokens[Index - 1];
+      const StringRef Space = Code.slice(Previous.EndOffset, Token.Offset);
+      if (Space.contains('\n') || Space.contains('\r')) {
+        Joined = true;
+        if (Previous.Text.starts_with("{") || Previous.Text.ends_with("<") ||
+            Token.Text.starts_with("}") || Token.Text.starts_with(">")) {
+          return std::nullopt;
+        }
+        if (!Previous.Text.ends_with("(") && !Previous.Text.ends_with("[") &&
+            !Token.Text.starts_with(")") && !Token.Text.starts_with("]") &&
+            !Token.Text.starts_with(",")) {
+          Text += ' ';
+        }
+      } else {
+        Text += Space.str();
+      }
+    }
+    std::optional<std::string> Normalized;
+    if (NormalizeIntegerLiterals && Token.Tok.is(tok::numeric_constant))
+      Normalized = normalizeIntegerLiteralCase(Token.Text);
+    Text += Normalized ? *Normalized : Token.Text.str();
+  }
+  return Text;
+}
+
+// Returns the `>` closing the template argument list opened at Open, or
+// nothing when the brackets are not balanced before a statement or brace
+// boundary, so `<` is probably a comparison.
+std::optional<unsigned> findTemplateCloser(const std::vector<TokenInfo> &Tokens,
+                                           unsigned Open, unsigned End) {
+  unsigned Depth = 0;
+  for (unsigned Index = Open; Index < End; ++Index) {
+    const TokenInfo &Token = Tokens[Index];
+    if (Token.Tok.isOneOf(tok::semi, tok::l_brace, tok::r_brace))
+      return std::nullopt;
+    if (Token.Tok.is(tok::less)) {
+      ++Depth;
+    } else if (Token.Tok.isOneOf(tok::greater, tok::greatergreater)) {
+      const unsigned Closed = Token.Tok.is(tok::greater) ? 1 : 2;
+      if (Closed >= Depth)
+        return Closed == Depth ? std::optional<unsigned>(Index) : std::nullopt;
+      Depth -= Closed;
+    }
+  }
+  return std::nullopt;
 }
 
 std::unique_ptr<AggregateNode>
@@ -490,24 +562,42 @@ parseAggregateNode(const std::vector<TokenInfo> &Tokens,
     }
 
     AggregateElement Element;
-    if (Current.Tok.is(tok::l_brace)) {
+    if (Current.Tok.is(tok::period)) {
+      // A designated element: `.name = value` or `.name = {...}`.
+      while (Cursor + 1 < Node->CloseTokenIndex &&
+             Tokens[Cursor].Tok.is(tok::period) &&
+             Tokens[Cursor + 1].Tok.is(tok::raw_identifier)) {
+        Element.Designator += "." + Tokens[Cursor + 1].Text.str();
+        Cursor += 2;
+      }
+      if (Element.Designator.empty() || Cursor + 1 >= Node->CloseTokenIndex ||
+          Tokens[Cursor].Tok.isNot(tok::equal)) {
+        return nullptr;
+      }
+      ++Cursor;
+    }
+
+    const TokenInfo &Value = Tokens[Cursor];
+    if (Value.Disabled || Value.Tok.is(tok::comment))
+      return nullptr;
+    if (Value.Tok.is(tok::l_brace)) {
       Element.Child = parseAggregateNode(Tokens, MatchingBraces, Cursor, Code,
                                          NormalizeIntegerLiterals);
       if (!Element.Child)
         return nullptr;
       Node->MaxBraceLevels =
           std::max(Node->MaxBraceLevels, 1 + Element.Child->MaxBraceLevels);
+      Node->JoinedLeaf |= Element.Child->JoinedLeaf;
       Cursor = Element.Child->CloseTokenIndex + 1;
     } else {
+      if (Value.Tok.is(tok::period))
+        return nullptr;
       const unsigned LeafStart = Cursor;
       unsigned LeafEnd = Cursor;
-      if (Current.Tok.is(tok::period))
-        return nullptr;
-
       while (Cursor < Node->CloseTokenIndex) {
         const TokenInfo &LeafToken = Tokens[Cursor];
-        if (LeafToken.Disabled || LeafToken.Tok.is(tok::comment) ||
-            !isInlineLeafSafeToken(LeafToken)) {
+        if (LeafToken.Disabled || LeafToken.Tok.isOneOf(tok::comment, tok::semi,
+                                                        tok::r_brace)) {
           return nullptr;
         }
         if (LeafToken.BraceDepth == ElementBraceDepth &&
@@ -516,33 +606,38 @@ parseAggregateNode(const std::vector<TokenInfo> &Tokens,
             LeafToken.Tok.is(tok::comma)) {
           break;
         }
-        if (LeafToken.Tok.isOneOf(tok::l_brace, tok::r_brace))
-          return nullptr;
+        // Commas in a template argument list such as `std::variant<int,
+        // std::string>` do not separate elements.
+        if (LeafToken.Tok.is(tok::less) && Cursor != LeafStart &&
+            Tokens[Cursor - 1].Tok.is(tok::raw_identifier)) {
+          if (const std::optional<unsigned> Closer = findTemplateCloser(
+                  Tokens, Cursor, Node->CloseTokenIndex)) {
+            LeafEnd = *Closer;
+            Cursor = *Closer + 1;
+            continue;
+          }
+        }
+        // A braced sub-expression inside the element, such as a lambda body
+        // or `T{}`, belongs to the leaf.
+        if (LeafToken.Tok.is(tok::l_brace)) {
+          if (Cursor == LeafStart)
+            return nullptr;
+          const int Match = MatchingBraces[Cursor];
+          if (Match < 0 || static_cast<unsigned>(Match) >= Node->CloseTokenIndex)
+            return nullptr;
+          Cursor = static_cast<unsigned>(Match);
+        }
         LeafEnd = Cursor;
         ++Cursor;
       }
 
-      const StringRef LeafText =
-          Code.slice(Tokens[LeafStart].Offset, Tokens[LeafEnd].EndOffset)
-              .trim();
-      if (LeafText.empty() || LeafText.contains('\n') ||
-          LeafText.contains('\r'))
+      bool Joined = false;
+      std::optional<std::string> LeafText = joinLeafTokens(
+          Tokens, LeafStart, LeafEnd, Code, NormalizeIntegerLiterals, Joined);
+      if (!LeafText || LeafText->empty())
         return nullptr;
-      Element.LeafText = LeafText.str();
-      if (NormalizeIntegerLiterals) {
-        const unsigned BaseOffset = Tokens[LeafStart].Offset;
-        for (unsigned Index = LeafEnd + 1; Index-- > LeafStart;) {
-          if (Tokens[Index].Tok.isNot(tok::numeric_constant))
-            continue;
-          const auto Normalized =
-              normalizeIntegerLiteralCase(Tokens[Index].Text);
-          if (!Normalized)
-            continue;
-          const unsigned RelativeOffset = Tokens[Index].Offset - BaseOffset;
-          Element.LeafText.replace(RelativeOffset, Tokens[Index].Text.size(),
-                                   *Normalized);
-        }
-      }
+      Element.LeafText = std::move(*LeafText);
+      Node->JoinedLeaf |= Joined;
     }
 
     Node->Elements.push_back(std::move(Element));
@@ -570,15 +665,25 @@ std::vector<std::string> renderAggregateNode(const AggregateNode &Node,
   if (Node.Elements.empty())
     return {Indent + "{}"};
 
+  const bool Designated = !Node.Elements.front().Designator.empty();
+  auto ElementText = [](const AggregateElement &Element) {
+    return Element.Designator.empty()
+               ? Element.LeafText
+               : Element.Designator + " = " + Element.LeafText;
+  };
   if (aggregateNodeHasOnlyLeaves(Node)) {
     std::string ScalarLine = Indent + "{";
     for (size_t I = 0; I < Node.Elements.size(); ++I) {
       if (I != 0)
         ScalarLine += ", ";
-      ScalarLine += Node.Elements[I].LeafText;
+      ScalarLine += ElementText(Node.Elements[I]);
     }
     ScalarLine += "}";
-    return {std::move(ScalarLine)};
+    // The caller may append `,` or `;`.
+    if (Style.ColumnLimit == 0 ||
+        measureColumn(ScalarLine, Style.TabWidth) + 1 <= Style.ColumnLimit) {
+      return {std::move(ScalarLine)};
+    }
   }
 
   std::vector<std::string> Lines;
@@ -590,7 +695,18 @@ std::vector<std::string> renderAggregateNode(const AggregateNode &Node,
     const AggregateElement &Element = Node.Elements[I];
     const bool HasNext = I + 1 < Node.Elements.size();
 
+    if (Element.isLeaf() && Designated) {
+      Lines.push_back(ChildIndent + ElementText(Element) + (HasNext ? "," : ""));
+      continue;
+    }
     if (Element.isLeaf()) {
+      // Consecutive positional leaves share a line while it fits.
+      if (HasPendingLeafLine && Style.ColumnLimit != 0 &&
+          measureColumn(PendingLeafLine + ", " + Element.LeafText + ",",
+                        Style.TabWidth) > Style.ColumnLimit) {
+        Lines.push_back(PendingLeafLine + ",");
+        HasPendingLeafLine = false;
+      }
       if (!HasPendingLeafLine) {
         PendingLeafLine = ChildIndent + Element.LeafText;
         HasPendingLeafLine = true;
@@ -604,8 +720,19 @@ std::vector<std::string> renderAggregateNode(const AggregateNode &Node,
       continue;
     }
 
-    const auto ChildLines =
+    auto ChildLines =
         renderAggregateNode(*Element.Child, BaseIndent, IndentLevel + 1, Style);
+    if (!Element.Designator.empty()) {
+      // `.name = {1, 2}` stays on one line; a nested block starts on the line
+      // after `.name =`.
+      if (ChildLines.size() == 1) {
+        ChildLines.front() = ChildIndent + Element.Designator + " = " +
+                             StringRef(ChildLines.front()).ltrim().str();
+      } else {
+        ChildLines.insert(ChildLines.begin(),
+                          ChildIndent + Element.Designator + " =");
+      }
+    }
     if (HasPendingLeafLine) {
       Lines.push_back(PendingLeafLine);
       Lines.back() += ",";
@@ -668,6 +795,14 @@ void collectExpandedAggregateFixes(const std::vector<TokenInfo> &Tokens,
     const StringRef BaseIndent =
         getLineIndent(Code, Lines[EqualToken.LineIndex]);
     const auto RenderedLines = renderAggregateNode(*Root, BaseIndent, 0, Style);
+    if (Root->JoinedLeaf && Style.ColumnLimit != 0 &&
+        std::any_of(RenderedLines.begin(), RenderedLines.end(),
+                    [&](const std::string &Line) {
+                      return measureColumn(Line, Style.TabWidth) + 1 >
+                             Style.ColumnLimit;
+                    })) {
+      continue;
+    }
     std::string Replacement = DefaultLineEnding.str();
     for (size_t LineIndex = 0; LineIndex < RenderedLines.size(); ++LineIndex) {
       if (LineIndex != 0)
@@ -712,7 +847,7 @@ void collectStructuralFixes(const PostFormatSource &Source,
   }
   if (Extensions.AlignMacrosAcrossDirectives) {
     collectMacroAlignmentFixes(Tokens, Lines, AffectedRangeMgr, StartOfFile,
-                               Code, std::max(Style.TabWidth, 1u), Pending);
+                               Code, Style, Pending);
   }
 }
 

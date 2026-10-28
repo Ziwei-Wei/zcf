@@ -155,7 +155,6 @@ ZCFExtensions:
   ArgumentIndentedClosingParentheses: true
   ForceMultilineFunctionSignatures: true
   BreakConstructorDestructorSpecifiers: true
-  CompactSingleArgumentCalls: true
   ExpandNestedAggregateBraces: true
   BreakRequiresExpressionBraces: true
   BreakPackExpansionInheritance: true
@@ -172,7 +171,6 @@ ZCFExtensions:
   SeparateClosingDirectiveComments: true
   ProgressiveCallExpansion: true
   ProgressiveArithmeticExpansion: true
-  CompactTwoOperandExpressions: true
   BodyDrivenLambdaExpansion: true
   VerticalTernaryExpressions: true
   SeparateSwitchCaseBlocks: true

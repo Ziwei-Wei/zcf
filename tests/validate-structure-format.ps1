@@ -52,8 +52,6 @@ if (-not (Test-Path -LiteralPath $CaseDir -PathType Container)) {
 
 $caseIds = @(
     'break-constructor-destructor-specifiers',
-    'single-argument-call-compaction',
-    'single-argument-call-author-breaks',
     'nested-aggregate-brace-expansion',
     'requires-expression-brace-layout',
     'parameter-pack-layout',
@@ -64,10 +62,6 @@ $caseIds = @(
 )
 $optionCases = [ordered]@{
     BreakConstructorDestructorSpecifiers = 'break-constructor-destructor-specifiers'
-    CompactSingleArgumentCalls = @(
-        'single-argument-call-compaction',
-        'single-argument-call-author-breaks'
-    )
     ExpandNestedAggregateBraces = 'nested-aggregate-brace-expansion'
     BreakRequiresExpressionBraces = 'requires-expression-brace-layout'
     NormalizeIntegerLiteralCase = 'integer-literal-case-normalization'
@@ -123,7 +117,6 @@ if ($LASTEXITCODE -ne 0) {
 }
 foreach ($option in @(
     'BreakConstructorDestructorSpecifiers',
-    'CompactSingleArgumentCalls',
     'ExpandNestedAggregateBraces',
     'BreakRequiresExpressionBraces',
     'BreakPackExpansionInheritance',

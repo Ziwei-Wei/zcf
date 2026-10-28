@@ -95,7 +95,7 @@ clang-format -style=file file.cpp
 The reviewed C++ policy uses `ColumnLimit: 140`, leading binary operators, no
 consecutive assignment alignment, right-aligned scalar matrices, lambda bodies
 with their opening brace on its own line, progressive call and arithmetic
-expansion, and 25 independently configurable extensions. `BasedOnStyle: ZCF`
+expansion, and 23 independently configurable extensions. `BasedOnStyle: ZCF`
 enables every extension.
 
 ## Build from source

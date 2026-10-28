@@ -5,7 +5,7 @@ Last updated: 2026-10-08
 ## Complete
 
 - `zcf` is a single clang-format-compatible native executable.
-- The reviewed C++ policy provides 25 independently configurable extensions.
+- The reviewed C++ policy provides 23 independently configurable extensions.
 - Upstream LLVM 20.1.8 remains pinned and pristine behind a generated overlay.
 - `pipx install zcf` packages the native executable and exposes:
   - `zcf`
@@ -112,7 +112,7 @@ replacement set (`PostFormatSource`) serve both the structural and boundary
 rules. Duplicated layout helpers were merged, which also fixed
 `ForceMultilineFunctionSignatures` leaving multiple parameters bin-packed on one
 line outside the preset (where `BinPackParameters: OnePerLine` had masked it).
-The 25 extension options are declared once in `ExtensionOptions.def`.
+The 23 extension options are declared once in `ExtensionOptions.def`.
 
 `DeindentQualifiedFunctionNames` now changes only qualified-name indentation.
 Parameter breaking for declarations whose qualified name is split by comments
@@ -133,11 +133,11 @@ separates `= delete` declarations on both sides, which produced identical output
 on every contract and on the canonical fixture. `BlankLineBeforeReturn` was
 removed too; blank lines before return statements are left to the author.
 
-The blank-line separation rules (`BlankLinesAroundControlStatements`, `BlankLinesAroundLabels`,
-`SeparateSwitchCaseBlocks`, `SeparateDefinitionBlocksFromAll`,
-`SeparateFunctionDeclarations`, and `SeparatePreprocessorConditionalBlocks`)
-produce exactly one
-blank line, collapsing extras even when `MaxEmptyLinesToKeep` allows more. They
+The blank-line separation rules (`BlankLinesAroundControlStatements`,
+`BlankLinesAroundLabels`, `SeparateSwitchCaseBlocks`,
+`SeparateDefinitionBlocksFromAll`, `SeparateFunctionDeclarations`, and
+`SeparatePreprocessorConditionalBlocks`) produce exactly one blank line,
+collapsing extras even when `MaxEmptyLinesToKeep` allows more. They
 rewrite only whitespace between lines, so adjacent comments are preserved.
 
 Three independent blank-line rules cover what upstream
@@ -172,6 +172,46 @@ lambda body starts with its brace on its own line.
 overflowing lambda when its header fits; parameters are exploded one per line,
 with the brace on its own line, only when the header overflows or the author
 already exploded them.
+
+### Option decoupling audit
+
+Every option pair was formatted together and separately over all contract
+inputs and the canonical fixture; the combined output must equal a clean merge
+of the two single-option outputs. Options that build on one another, such as
+`ArgumentIndentedClosingParentheses` indenting the closing parenthesis of a
+list that `ForceMultilineFunctionSignatures` broke, compose. The audit found
+and fixed these couplings:
+
+- `BreakRequiresExpressionBraces` set every broken token of a declaration with
+  a requires clause to the line's first column, so signature parameters lost
+  their indentation and `ArgumentIndentedClosingParentheses` was overridden.
+  It now affects only requires-expression braces.
+- `ExpandNestedAggregateBraces` treated constructor braces (`T{...}`) and
+  lambda closing braces as aggregate levels and could not render designated
+  initializers, which left garbled indentation and froze calls inside the
+  aggregate in the author's layout. It now expands only aggregate levels,
+  renders `.name = value` elements one per line (`.name = {1, 2}` stays
+  inline), keeps calls in LibFormat's layout, and wraps positional elements at
+  the column limit.
+- `ProgressiveArithmeticExpansion` treated any author line break in an
+  expression, including breaks between call arguments, as a multi-line
+  arithmetic layout. Only breaks around arithmetic operators count now. It
+  also always keeps a two-operand expression that fits on one line; the former
+  `CompactTwoOperandExpressions`, which did nothing without it, was merged in.
+- `AlignMacrosAcrossDirectives` ended every alignment run at a blank or
+  comment-only line. It now follows `AlignConsecutiveMacros.AcrossEmptyLines`
+  and `AcrossComments`, so the blank lines inserted by
+  `SeparatePreprocessorConditionalBlocks` are under the user's control.
+- `CompactSingleArgumentCalls` was removed: it only acted when
+  `ColumnLimit: 0` kept author line breaks and never changed preset output.
+
+LLVM 20 (and LLVM main) decides whether a trailing comment after `}` ends a
+scope from the brace's original line break, so a short block it merges onto
+one line keeps its comment out of the alignment run until a second run. When
+extensions are active and the formatted output contains such a merged block,
+zcf repeats LibFormat and the post-format pass once, after the extension blank
+lines exist, so one run is stable. Upstream styles without
+extensions keep upstream behavior.
 
 All code-review follow-ups are complete.
 

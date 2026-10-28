@@ -212,6 +212,16 @@ $regressionContracts = [ordered]@{
         '{BasedOnStyle: LLVM, Standard: c++20, BreakBeforeBraces: Allman, ZCFExtensions: {WrapPackIndexedFunctionBraces: true}}'
     'function-specifier-assignment' =
         '{BasedOnStyle: LLVM, BreakAfterReturnType: All, BreakBeforeBinaryOperators: All, ZCFExtensions: {ForceMultilineFunctionSignatures: true}}'
+    'arithmetic-ignores-call-argument-breaks' =
+        '{BasedOnStyle: LLVM, ColumnLimit: 140, ZCFExtensions: {ProgressiveArithmeticExpansion: true}}'
+    'merged-block-trailing-comment-alignment' =
+        '{BasedOnStyle: ZCF, ZCFExtensions: {BlankLinesAroundControlStatements: false}}'
+    'designated-aggregate-expansion' =
+        '{BasedOnStyle: LLVM, ColumnLimit: 120, ZCFExtensions: {ExpandNestedAggregateBraces: true}}'
+    'macro-alignment-across-empty-lines' =
+        '{BasedOnStyle: LLVM, AlignConsecutiveMacros: {Enabled: true, AcrossEmptyLines: true}, ZCFExtensions: {AlignMacrosAcrossDirectives: true, SeparatePreprocessorConditionalBlocks: true}}'
+    'requires-clause-signature-indent' =
+        '{BasedOnStyle: LLVM, ZCFExtensions: {ForceMultilineFunctionSignatures: true, BreakRequiresExpressionBraces: true}}'
     'qualified-signature-parameters' =
         '{BasedOnStyle: LLVM, IndentWidth: 4, ZCFExtensions: {ForceMultilineFunctionSignatures: true}}'
     'qualified-name-deindent-only' = "file:$deindentOnlyStyle"
@@ -355,12 +365,6 @@ $presetRuleContracts = @(
     },
     @{
         Option = 'ProgressiveCallExpansion'
-        Case = 'call-compaction-after-assignment'
-        Input = Join-Path $CaseDir 'call-compaction-after-assignment.input.cpp'
-        Expected = Join-Path $CaseDir 'call-compaction-after-assignment.zcf.cpp'
-    },
-    @{
-        Option = 'ProgressiveCallExpansion'
         Case = 'commented-call-compaction'
         Input = Join-Path $CaseDir 'commented-call-compaction.input.cpp'
         Expected = Join-Path $CaseDir 'commented-call-compaction.zcf.cpp'
@@ -495,7 +499,6 @@ $enabledPresetOptions = @(
     'ArgumentIndentedClosingParentheses',
     'ForceMultilineFunctionSignatures',
     'BreakConstructorDestructorSpecifiers',
-    'CompactSingleArgumentCalls',
     'ExpandNestedAggregateBraces',
     'BreakRequiresExpressionBraces',
     'BreakPackExpansionInheritance',
@@ -512,7 +515,6 @@ $enabledPresetOptions = @(
     'SeparateClosingDirectiveComments',
     'ProgressiveCallExpansion',
     'ProgressiveArithmeticExpansion',
-    'CompactTwoOperandExpressions',
     'BodyDrivenLambdaExpansion',
     'VerticalTernaryExpressions',
     'SeparateSwitchCaseBlocks',
@@ -569,7 +571,7 @@ $presetOptionContracts = @(
         Expected = $arithmeticExpected
     },
     @{
-        Option = 'CompactTwoOperandExpressions'
+        Option = 'ProgressiveArithmeticExpansion'
         Input = $compactOperandsInput
         Expected = $compactOperandsExpected
     }
@@ -608,8 +610,7 @@ const auto layered = sampleIndex
 $layeredCompactionStyle = @'
 {BasedOnStyle: LLVM, ColumnLimit: 60, BreakBeforeBinaryOperators: All,
  AlignOperands: DontAlign,
- ZCFExtensions: {ProgressiveArithmeticExpansion: true,
-                    CompactTwoOperandExpressions: true}}
+ ZCFExtensions: {ProgressiveArithmeticExpansion: true}}
 '@.Replace("`r", '').Replace("`n", ' ')
 & $FormatterExe "-style=$layeredCompactionStyle" -i $layeredCompactionInput
 if ($LASTEXITCODE -ne 0) {
@@ -632,7 +633,7 @@ const auto delta = measuredValueWithAVeryLongName - targetValueWithAVeryLongName
     [System.Text.UTF8Encoding]::new($false)
 )
 & $FormatterExe `
-    '-style={BasedOnStyle: LLVM, ColumnLimit: 40, IndentWidth: 4, ContinuationIndentWidth: 4, ZCFExtensions: {ProgressiveArithmeticExpansion: true, CompactTwoOperandExpressions: true}}' `
+    '-style={BasedOnStyle: LLVM, ColumnLimit: 40, IndentWidth: 4, ContinuationIndentWidth: 4, ZCFExtensions: {ProgressiveArithmeticExpansion: true}}' `
     -i $longTwoOperandInput
 if ($LASTEXITCODE -ne 0) {
     throw "Long two-operand formatting failed with exit code $LASTEXITCODE."
