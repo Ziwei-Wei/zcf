@@ -106,7 +106,7 @@ if ($disabledDump.Contains('ZCFExtensions:')) {
 
 $enabledDump = (
     & $FormatterExe "-style=file:$StyleFile" -dump-config `
-        (Join-Path $CaseDir 'blank-line-before-return.input.cpp') 2>&1
+        (Join-Path $CaseDir 'closing-parenthesis-argument-indent.input.cpp') 2>&1
 ) -join "`n"
 if ($LASTEXITCODE -ne 0) {
     throw "Enabled extension dump-config failed with exit code $LASTEXITCODE."
@@ -188,15 +188,13 @@ $regressionContracts = [ordered]@{
     'attributed-label-namespace-indentation' = "file:$StyleFile"
     'qualified-name-nested-continuation' = "file:$StyleFile"
     'adjacent-string-literal-arguments' = "file:$StyleFile"
-    'return-blank-line-contexts' =
-        '{BasedOnStyle: LLVM, ZCFExtensions: {BlankLineBeforeReturn: true}}'
     'control-statement-trailing-comments' =
         '{BasedOnStyle: LLVM, ZCFExtensions: {BlankLinesAroundControlStatements: true}}'
     'nested-aggregate-standalone-layout' =
         '{BasedOnStyle: LLVM, ZCFExtensions: {ExpandNestedAggregateBraces: true}}'
     'lambda-chain-is-not-aggregate' = "file:$StyleFile"
     'separation-collapses-extra-blank-lines' =
-        '{BasedOnStyle: ZCF, MaxEmptyLinesToKeep: 3, ZCFExtensions: {BlankLineBeforeReturn: true}}'
+        '{BasedOnStyle: ZCF, MaxEmptyLinesToKeep: 3}'
     'separation-preserves-comments' = '{BasedOnStyle: ZCF}'
     'signature-pointer-and-explicit-parameters' =
         '{BasedOnStyle: LLVM, ZCFExtensions: {ForceMultilineFunctionSignatures: true}}'
@@ -488,7 +486,7 @@ Write-Host 'PASS ZCF preset canonical idempotence'
 
 $presetDump = (
     & $FormatterExe '-style={BasedOnStyle: ZCF}' -dump-config `
-        (Join-Path $CaseDir 'blank-line-before-return.input.cpp') 2>&1
+        (Join-Path $CaseDir 'closing-parenthesis-argument-indent.input.cpp') 2>&1
 ) -join "`n"
 if ($LASTEXITCODE -ne 0) {
     throw "ZCF preset dump-config failed with exit code $LASTEXITCODE."
@@ -696,29 +694,28 @@ if (-not (Get-NormalizedText -Path $commentArithmeticInput).Contains(
 }
 Write-Host 'PASS comment-bearing arithmetic safety'
 
-# The preset leaves return separation to the author; an explicit override
-# enables it.
+# An explicit ZCFExtensions entry overrides the preset's value.
 foreach ($override in @(
-    @{ Style = '{BasedOnStyle: ZCF}'; Separated = $false },
+    @{ Style = '{BasedOnStyle: ZCF}'; Expected = 'int value = 0xFF;' },
     @{
-        Style = '{BasedOnStyle: ZCF, ZCFExtensions: {BlankLineBeforeReturn: true}}'
-        Separated = $true
+        Style = '{BasedOnStyle: ZCF, ZCFExtensions: {NormalizeIntegerLiteralCase: false}}'
+        Expected = 'int value = 0Xff;'
     }
 )) {
     $overrideInput = Join-Path $WorkDir 'preset-override.cpp'
     [System.IO.File]::WriteAllText(
         $overrideInput,
-        "int run() { work(); return 1; }`n",
+        "int value = 0Xff;`n",
         [System.Text.UTF8Encoding]::new($false)
     )
     & $FormatterExe "-style=$($override.Style)" -i $overrideInput
     if ($LASTEXITCODE -ne 0) {
         throw "ZCF option override failed with exit code $LASTEXITCODE."
     }
-    if ((Get-NormalizedText -Path $overrideInput).Contains(
-        "work();`n`n    return 1;"
-    ) -ne $override.Separated) {
-        throw "Return separation is wrong for $($override.Style)."
+    if (-not (Get-NormalizedText -Path $overrideInput).Contains(
+        $override.Expected
+    )) {
+        throw "Integer literal case is wrong for $($override.Style)."
     }
 }
 Write-Host 'PASS ZCF preset option override'
@@ -737,7 +734,7 @@ BasedOnStyle: LLVM
 )
 $presetResetDump = (
     & $FormatterExe "-style=file:$presetResetStyle" -dump-config `
-        (Join-Path $CaseDir 'blank-line-before-return.input.cpp') 2>&1
+        (Join-Path $CaseDir 'closing-parenthesis-argument-indent.input.cpp') 2>&1
 ) -join "`n"
 if ($LASTEXITCODE -ne 0) {
     throw "ZCF language reset failed with exit code $LASTEXITCODE."
@@ -753,7 +750,7 @@ class Sample
     int Run()
     {
         Work();
-        return 1;
+        return 0Xff;
     }
 }
 '@
@@ -774,7 +771,7 @@ if ($LASTEXITCODE -ne 0) {
     throw "Non-C++ baseline formatting failed with exit code $LASTEXITCODE."
 }
 $nonCppExtensionStyle =
-    '{BasedOnStyle: Microsoft, ZCFExtensions: {BlankLineBeforeReturn: true}}'
+    '{BasedOnStyle: Microsoft, ZCFExtensions: {NormalizeIntegerLiteralCase: true}}'
 & $FormatterExe "-style=$nonCppExtensionStyle" -i $nonCppExtension
 if ($LASTEXITCODE -ne 0) {
     throw "Non-C++ extension formatting failed with exit code $LASTEXITCODE."
@@ -814,10 +811,7 @@ Write-Host 'PASS non-C++ ZCF fallback'
 # Options that produce the same blank lines as the tested option are disabled
 # so the tested option must reproduce its target alone.
 $overlappingOptions = @{
-    BlankLinesAroundLabels = @(
-        'BlankLineBeforeReturn',
-        'BlankLinesAroundControlStatements'
-    )
+    BlankLinesAroundLabels = @('BlankLinesAroundControlStatements')
 }
 foreach ($entry in $optionCases.GetEnumerator()) {
     $option = [string]$entry.Key

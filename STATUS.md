@@ -5,7 +5,7 @@ Last updated: 2026-10-08
 ## Complete
 
 - `zcf` is a single clang-format-compatible native executable.
-- The reviewed C++ policy provides 26 independently configurable extensions.
+- The reviewed C++ policy provides 25 independently configurable extensions.
 - Upstream LLVM 20.1.8 remains pinned and pristine behind a generated overlay.
 - `pipx install zcf` packages the native executable and exposes:
   - `zcf`
@@ -112,7 +112,7 @@ replacement set (`PostFormatSource`) serve both the structural and boundary
 rules. Duplicated layout helpers were merged, which also fixed
 `ForceMultilineFunctionSignatures` leaving multiple parameters bin-packed on one
 line outside the preset (where `BinPackParameters: OnePerLine` had masked it).
-The 26 extension options are declared once in `ExtensionOptions.def`.
+The 25 extension options are declared once in `ExtensionOptions.def`.
 
 `DeindentQualifiedFunctionNames` now changes only qualified-name indentation.
 Parameter breaking for declarations whose qualified name is split by comments
@@ -130,10 +130,10 @@ were removed from the policy. Their constructs now follow upstream spacing and
 layout, and the bridge patch no longer needs a space-required hook.
 `SeparateDeletedFunctions` was removed as well: `SeparateFunctionDeclarations`
 separates `= delete` declarations on both sides, which produced identical output
-on every contract and on the canonical fixture.
+on every contract and on the canonical fixture. `BlankLineBeforeReturn` was
+removed too; blank lines before return statements are left to the author.
 
-The blank-line separation rules (`BlankLineBeforeReturn`,
-`BlankLinesAroundControlStatements`, `BlankLinesAroundLabels`,
+The blank-line separation rules (`BlankLinesAroundControlStatements`, `BlankLinesAroundLabels`,
 `SeparateSwitchCaseBlocks`, `SeparateDefinitionBlocksFromAll`,
 `SeparateFunctionDeclarations`, and `SeparatePreprocessorConditionalBlocks`)
 produce exactly one
@@ -166,9 +166,7 @@ because LLVM 20 can merge a pack-indexed function with the following
 declaration across `#endif`/`#if`.
 
 The ZCF preset sets `BraceWrapping.BeforeLambdaBody: true`, so a multi-line
-lambda body starts with its brace on its own line, and no longer enables
-`BlankLineBeforeReturn`; blank lines before return statements are left to the
-author unless the option is set explicitly.
+lambda body starts with its brace on its own line.
 
 `BodyDrivenLambdaExpansion` expands only the body of a multi-statement or
 overflowing lambda when its header fits; parameters are exploded one per line,

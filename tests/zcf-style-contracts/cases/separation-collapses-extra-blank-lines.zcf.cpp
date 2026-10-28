@@ -17,6 +17,8 @@ done:
 
     cleanup();
 
+
+
     return value;
 }
 
@@ -86,6 +88,7 @@ done: // label comment
         /* lead */ default:
             break;
     }
+
 
     // explains
     return mode;

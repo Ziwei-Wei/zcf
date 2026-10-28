@@ -116,7 +116,7 @@ if ($disabledDump.Contains('ZCFExtensions:')) {
 
 $enabledDump = (
     & $FormatterExe "-style=file:$StyleFile" -dump-config `
-        (Join-Path $CaseDir 'blank-line-before-return.input.cpp') 2>&1
+        (Join-Path $CaseDir 'closing-parenthesis-argument-indent.input.cpp') 2>&1
 ) -join "`n"
 if ($LASTEXITCODE -ne 0) {
     throw "Enabled extension dump-config failed with exit code $LASTEXITCODE."

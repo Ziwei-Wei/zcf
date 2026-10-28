@@ -7,7 +7,6 @@
 
 ZCF_EXTENSION_OPTION(ArgumentIndentedClosingParentheses)
 ZCF_EXTENSION_OPTION(ForceMultilineFunctionSignatures)
-ZCF_EXTENSION_OPTION(BlankLineBeforeReturn)
 ZCF_EXTENSION_OPTION(BreakConstructorDestructorSpecifiers)
 ZCF_EXTENSION_OPTION(CompactSingleArgumentCalls)
 ZCF_EXTENSION_OPTION(ExpandNestedAggregateBraces)

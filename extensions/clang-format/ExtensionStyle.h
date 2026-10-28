@@ -13,8 +13,6 @@ struct ExtensionStyle {
     ExtensionStyle Style;
 #define ZCF_EXTENSION_OPTION(Name) Style.Name = true;
 #include "extensions/clang-format/ExtensionOptions.def"
-    // The preset leaves blank lines before return statements to the author.
-    Style.BlankLineBeforeReturn = false;
     return Style;
   }
 

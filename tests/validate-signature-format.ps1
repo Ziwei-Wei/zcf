@@ -52,13 +52,11 @@ if (-not (Test-Path -LiteralPath $CaseDir -PathType Container)) {
 
 $caseIds = @(
     'closing-parenthesis-argument-indent',
-    'force-multiline-function-signatures',
-    'blank-line-before-return'
+    'force-multiline-function-signatures'
 )
 $optionCases = [ordered]@{
     ArgumentIndentedClosingParentheses = 'closing-parenthesis-argument-indent'
     ForceMultilineFunctionSignatures = 'force-multiline-function-signatures'
-    BlankLineBeforeReturn = 'blank-line-before-return'
 }
 
 if (Test-Path -LiteralPath $WorkDir) {
@@ -98,15 +96,14 @@ if ($disabledDump.Contains('ZCFExtensions:')) {
 
 $enabledDump = (
     & $FormatterExe "-style=file:$StyleFile" -dump-config `
-        (Join-Path $CaseDir 'blank-line-before-return.input.cpp') 2>&1
+        (Join-Path $CaseDir 'force-multiline-function-signatures.input.cpp') 2>&1
 ) -join "`n"
 if ($LASTEXITCODE -ne 0) {
     throw "Enabled extension dump-config failed with exit code $LASTEXITCODE."
 }
 foreach ($option in @(
     'ArgumentIndentedClosingParentheses',
-    'ForceMultilineFunctionSignatures',
-    'BlankLineBeforeReturn'
+    'ForceMultilineFunctionSignatures'
 )) {
     if (-not $enabledDump.Contains("${option}: true")) {
         throw "Enabled dump-config did not preserve $option."
@@ -193,18 +190,18 @@ $multiSectionInput = Join-Path $WorkDir 'multi-section.cpp'
 Language: Cpp
 BasedOnStyle: LLVM
 ZCFExtensions:
-  BlankLineBeforeReturn: true
+  ForceMultilineFunctionSignatures: true
 ---
 Language: CSharp
 BasedOnStyle: Microsoft
 ZCFExtensions:
-  BlankLineBeforeReturn: false
+  ForceMultilineFunctionSignatures: false
 '@,
     [System.Text.UTF8Encoding]::new($false)
 )
 [System.IO.File]::WriteAllText(
     $multiSectionInput,
-    "int run() { work(); return 1; }`n",
+    "int run(int first, int second);`n",
     [System.Text.UTF8Encoding]::new($false)
 )
 & $FormatterExe "-style=file:$multiSectionStyle" -i $multiSectionInput
@@ -212,7 +209,7 @@ if ($LASTEXITCODE -ne 0) {
     throw "Multi-section extension formatting failed with exit code $LASTEXITCODE."
 }
 if (-not (Get-NormalizedText -Path $multiSectionInput).Contains(
-    "work();`n`n  return 1;"
+    "int run(`n    int first,`n    int second`n);"
 )) {
     throw 'C++ formatting did not select its language-specific extension style.'
 }
@@ -222,17 +219,9 @@ $finalizedInput = Join-Path $WorkDir 'finalized.cpp'
 [System.IO.File]::WriteAllText(
     $finalizedInput,
     @'
-int formatted()
-{
-    work();
-    return 1;
-}
+int formatted(int first, int second);
 // clang-format off
-int untouched()
-{
-    work();
-    return 2;
-}
+int untouched(int first, int second);
 // clang-format on
 '@,
     [System.Text.UTF8Encoding]::new($false)
@@ -242,8 +231,8 @@ if ($LASTEXITCODE -ne 0) {
     throw "Finalized-region formatting failed with exit code $LASTEXITCODE."
 }
 $finalizedText = Get-NormalizedText -Path $finalizedInput
-if (-not $finalizedText.Contains("work();`n`n    return 1;") -or
-    -not $finalizedText.Contains("work();`n    return 2;")) {
+if (-not $finalizedText.Contains("formatted(`n    int first,`n    int second`n    );") -or
+    -not $finalizedText.Contains("int untouched(int first, int second);")) {
     throw 'Enabled extension formatting changed a clang-format-off region.'
 }
 Write-Host 'PASS finalized region preservation'

@@ -320,63 +320,6 @@ void collectBlankLineFixes(const std::vector<TokenInfo> &Tokens,
   }
 }
 
-// Separates a return statement from a preceding completed statement or goto
-// label. A comment block directly above the return stays attached to it.
-void collectReturnBlankLineFixes(const std::vector<TokenInfo> &Tokens,
-                                 const std::vector<PhysicalLine> &Lines,
-                                 AffectedRangeManager &AffectedRangeMgr,
-                                 SourceLocation StartOfFile, StringRef Code,
-                                 StringRef DefaultLineEnding,
-                                 std::vector<PendingReplacement> &Pending) {
-  for (unsigned LineIndex = 0; LineIndex < Lines.size(); ++LineIndex) {
-    const PhysicalLine &Line = Lines[LineIndex];
-    if (Line.InPPDirective || Line.Disabled || !Line.FirstToken ||
-        Line.FirstToken != Line.FirstNonCommentToken ||
-        Tokens[*Line.FirstToken].Text != "return") {
-      continue;
-    }
-
-    unsigned FirstLineIndex = LineIndex;
-    while (FirstLineIndex > 0 && Lines[FirstLineIndex - 1].CommentOnly &&
-           !Lines[FirstLineIndex - 1].Disabled) {
-      --FirstLineIndex;
-    }
-    const unsigned PreviousLineIndex =
-        previousNonBlankLine(Lines, FirstLineIndex);
-    if (PreviousLineIndex >= Lines.size())
-      continue;
-    const PhysicalLine &PreviousLine = Lines[PreviousLineIndex];
-    if (PreviousLine.Disabled || !PreviousLine.LastNonCommentToken)
-      continue;
-
-    if (PreviousLine.InPPDirective) {
-      const int DirectiveIndex =
-          nextNonCommentToken(Tokens, *PreviousLine.FirstNonCommentToken);
-      if (DirectiveIndex >= 0 && Tokens[DirectiveIndex].Text != "endif" &&
-          isConditionalDirectiveName(Tokens[DirectiveIndex].Text)) {
-        continue;
-      }
-    } else {
-      // Goto labels stay visually separated from the return they guard;
-      // switch labels and incomplete statements keep the return attached.
-      const TokenInfo &PreviousFirst =
-          Tokens[*PreviousLine.FirstNonCommentToken];
-      const TokenInfo &PreviousLast = Tokens[*PreviousLine.LastNonCommentToken];
-      const bool EndsStatement =
-          PreviousLast.Tok.isOneOf(tok::semi, tok::r_brace);
-      const bool EndsGotoLabel = PreviousLast.Tok.is(tok::colon) &&
-                                 PreviousFirst.Text != "case" &&
-                                 PreviousFirst.Text != "default";
-      if (!EndsStatement && !EndsGotoLabel)
-        continue;
-    }
-
-    queueBlankLineBefore(Tokens, *Lines[FirstLineIndex].FirstToken,
-                         AffectedRangeMgr, StartOfFile, Code, DefaultLineEnding,
-                         "BlankLineBeforeReturn", Pending);
-  }
-}
-
 std::optional<MacroAlignEntry>
 parseObjectLikeDefine(const PhysicalLine &Line,
                       const std::vector<TokenInfo> &Tokens, StringRef Code,
@@ -756,10 +699,6 @@ void collectStructuralFixes(const PostFormatSource &Source,
     collectBlankLineFixes(Tokens, Lines, Source.MatchingParens,
                           Source.MatchingBraces, AffectedRangeMgr, StartOfFile,
                           Code, DefaultLineEnding, Pending);
-  }
-  if (Extensions.BlankLineBeforeReturn) {
-    collectReturnBlankLineFixes(Tokens, Lines, AffectedRangeMgr, StartOfFile,
-                                Code, DefaultLineEnding, Pending);
   }
   if (Extensions.ExpandNestedAggregateBraces) {
     collectExpandedAggregateFixes(
