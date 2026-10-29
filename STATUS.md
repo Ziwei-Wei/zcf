@@ -214,6 +214,32 @@ zcf repeats LibFormat and the post-format pass once, after the extension blank
 lines exist, so one run is stable. Upstream styles without
 extensions keep upstream behavior.
 
+A follow-up audit fixed the remaining issues:
+
+- Operator functions (`operator=(`, `operator()(`, `operator==(`) are
+  signatures for `ForceMultilineFunctionSignatures`,
+  `ArgumentIndentedClosingParentheses`, and the `= delete` attachment rule.
+  Explicit member calls such as `value.operator=(other)` are not.
+- The nested-aggregate renderer keeps trailing commas (and then lays the list
+  out one element per line, as LibFormat does) and recognizes template angle
+  brackets by LibFormat's attached spacing instead of guessing from a
+  preceding name. When an aggregate holds comments or multi-line lambdas and
+  falls back to LibFormat layout, elements take their indentation from the
+  enclosing aggregate level, designated elements stay one per line, and
+  innermost scalar lists stay on one line.
+- The second formatting pass for merged short blocks runs only when a
+  neighboring line also has a trailing comment, the only case where alignment
+  differs.
+
+Known upstream LLVM 20 behavior that zcf does not change:
+
+- `a < b, c > d` inside a braced list is parsed as a template argument list.
+- With `BraceWrapping.BeforeLambdaBody`, a lambda in a long member-call chain
+  or as a designated initializer value puts its body brace on its own line
+  under the lambda introducer.
+- Trailing comments on nested aggregate elements can be indented or aligned
+  inconsistently.
+
 All code-review follow-ups are complete.
 
 ## Remaining release work
