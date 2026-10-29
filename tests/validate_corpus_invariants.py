@@ -94,6 +94,9 @@ def failed(run: subprocess.CompletedProcess[bytes]) -> bool:
 
 
 def normalized_tokens(text: bytes) -> bytes:
+    # Line continuations and the `//` markers of rewrapped line comments are
+    # layout, not code.
+    text = re.sub(rb"\\\r?\n", b"", text).replace(b"//", b"")
     return re.sub(rb"\s+", b"", NUMBER.sub(lambda m: m.group(0).lower(), text))
 
 
