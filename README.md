@@ -219,6 +219,19 @@ cmake --build build/release --target compare-format-gtest
 The parity suite covers 210 formatting, style-dump, round-trip, language, and CLI
 cases. The most recent validated state passes all 210.
 
+Real-code invariants (opt-in, several minutes):
+
+```text
+cmake --build build/release --target validate-corpus-invariants
+```
+
+This formats a fixed sample of 600 files from the pinned LLVM sources with the
+ZCF preset, LLVM with every extension, and the preset with tabs and
+`ColumnLimit: 0`. Extensions must not crash, must be stable across a second
+run, and may change only whitespace and integer-literal case. Problems that
+also occur with extensions disabled are reported as upstream and do not fail
+the check.
+
 Python launcher and wheel tests:
 
 ```text
