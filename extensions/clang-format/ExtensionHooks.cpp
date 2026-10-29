@@ -11,8 +11,21 @@
 namespace clang::format::extensions {
 namespace {
 
+// The parameter list of an operator function such as `operator=(` or
+// `operator()(`, but not an explicit member call like `value.operator=(`.
+bool isOperatorParameterParen(const FormatToken &LeftParen) {
+  if (LeftParen.isNot(TT_OverloadedOperatorLParen))
+    return false;
+  const auto *Keyword = LeftParen.getPreviousNonComment();
+  while (Keyword && Keyword->isNot(tok::kw_operator))
+    Keyword = Keyword->getPreviousNonComment();
+  const auto *Before = Keyword ? Keyword->getPreviousNonComment() : nullptr;
+  return Keyword && !(Before && Before->isOneOf(tok::period, tok::arrow));
+}
+
 bool isFunctionParameterParen(const FormatToken &LeftParen) {
-  return LeftParen.is(TT_FunctionDeclarationLParen) &&
+  return (LeftParen.is(TT_FunctionDeclarationLParen) ||
+          isOperatorParameterParen(LeftParen)) &&
          isNonEmptyParen(LeftParen);
 }
 
@@ -162,10 +175,20 @@ bool extensionNeedsReformat(const Environment &Env, const FormatStyle &Style) {
 
   const PostFormatSource Source = scanPostFormatSource(Env, Style);
   const auto &Tokens = Source.Tokens;
-  for (const PhysicalLine &Line : Source.Lines) {
-    if (Line.Disabled || !Line.FirstNonCommentToken ||
-        !Line.LastNonCommentToken ||
-        Line.Tokens.back() == *Line.LastNonCommentToken) {
+  const auto &Lines = Source.Lines;
+  auto HasTrailingComment = [&](const PhysicalLine &Line) {
+    return !Line.Disabled && !Line.InPPDirective && !Line.CommentOnly &&
+           Line.LastNonCommentToken &&
+           Line.Tokens.back() != *Line.LastNonCommentToken;
+  };
+  for (size_t LineIndex = 0; LineIndex < Lines.size(); ++LineIndex) {
+    const PhysicalLine &Line = Lines[LineIndex];
+    // Alignment only differs when an adjacent line also has a trailing
+    // comment.
+    if (!HasTrailingComment(Line) || !Line.FirstNonCommentToken ||
+        !((LineIndex > 0 && HasTrailingComment(Lines[LineIndex - 1])) ||
+          (LineIndex + 1 < Lines.size() &&
+           HasTrailingComment(Lines[LineIndex + 1])))) {
       continue;
     }
     for (unsigned Index : Line.Tokens) {

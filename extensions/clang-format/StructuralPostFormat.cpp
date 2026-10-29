@@ -40,6 +40,8 @@ struct AggregateNode {
   unsigned MaxBraceLevels = 1;
   // An element had author line breaks joined, so the rendering must fit.
   bool JoinedLeaf = false;
+  // The list ends with `,`, which LibFormat lays out one element per line.
+  bool TrailingComma = false;
   std::vector<AggregateElement> Elements;
 };
 
@@ -502,9 +504,18 @@ std::optional<std::string> joinLeafTokens(const std::vector<TokenInfo> &Tokens,
   return Text;
 }
 
+// LibFormat spaces binary `<` and `>` but attaches template angle brackets to
+// the preceding token, so in formatted code an angle bracket without
+// whitespace before it is a template bracket.
+bool isAttachedAngle(const std::vector<TokenInfo> &Tokens, unsigned Index) {
+  return Index > 0 && Tokens[Index - 1].EndOffset == Tokens[Index].Offset &&
+         Tokens[Index].Tok.isOneOf(tok::less, tok::greater,
+                                   tok::greatergreater);
+}
+
 // Returns the `>` closing the template argument list opened at Open, or
 // nothing when the brackets are not balanced before a statement or brace
-// boundary, so `<` is probably a comparison.
+// boundary.
 std::optional<unsigned> findTemplateCloser(const std::vector<TokenInfo> &Tokens,
                                            unsigned Open, unsigned End) {
   unsigned Depth = 0;
@@ -512,9 +523,11 @@ std::optional<unsigned> findTemplateCloser(const std::vector<TokenInfo> &Tokens,
     const TokenInfo &Token = Tokens[Index];
     if (Token.Tok.isOneOf(tok::semi, tok::l_brace, tok::r_brace))
       return std::nullopt;
+    if (!isAttachedAngle(Tokens, Index))
+      continue;
     if (Token.Tok.is(tok::less)) {
       ++Depth;
-    } else if (Token.Tok.isOneOf(tok::greater, tok::greatergreater)) {
+    } else {
       const unsigned Closed = Token.Tok.is(tok::greater) ? 1 : 2;
       if (Closed >= Depth)
         return Closed == Depth ? std::optional<unsigned>(Index) : std::nullopt;
@@ -609,7 +622,7 @@ parseAggregateNode(const std::vector<TokenInfo> &Tokens,
         // Commas in a template argument list such as `std::variant<int,
         // std::string>` do not separate elements.
         if (LeafToken.Tok.is(tok::less) && Cursor != LeafStart &&
-            Tokens[Cursor - 1].Tok.is(tok::raw_identifier)) {
+            isAttachedAngle(Tokens, Cursor)) {
           if (const std::optional<unsigned> Closer = findTemplateCloser(
                   Tokens, Cursor, Node->CloseTokenIndex)) {
             LeafEnd = *Closer;
@@ -643,6 +656,13 @@ parseAggregateNode(const std::vector<TokenInfo> &Tokens,
     Node->Elements.push_back(std::move(Element));
   }
 
+  unsigned LastToken = Node->CloseTokenIndex - 1;
+  while (LastToken > Node->OpenTokenIndex &&
+         Tokens[LastToken].Tok.is(tok::comment)) {
+    --LastToken;
+  }
+  Node->TrailingComma = !Node->Elements.empty() &&
+                        Tokens[LastToken].Tok.is(tok::comma);
   return Node;
 }
 
@@ -666,12 +686,13 @@ std::vector<std::string> renderAggregateNode(const AggregateNode &Node,
     return {Indent + "{}"};
 
   const bool Designated = !Node.Elements.front().Designator.empty();
+  const bool OnePerLine = Designated || Node.TrailingComma;
   auto ElementText = [](const AggregateElement &Element) {
     return Element.Designator.empty()
                ? Element.LeafText
                : Element.Designator + " = " + Element.LeafText;
   };
-  if (aggregateNodeHasOnlyLeaves(Node)) {
+  if (aggregateNodeHasOnlyLeaves(Node) && !Node.TrailingComma) {
     std::string ScalarLine = Indent + "{";
     for (size_t I = 0; I < Node.Elements.size(); ++I) {
       if (I != 0)
@@ -695,8 +716,9 @@ std::vector<std::string> renderAggregateNode(const AggregateNode &Node,
     const AggregateElement &Element = Node.Elements[I];
     const bool HasNext = I + 1 < Node.Elements.size();
 
-    if (Element.isLeaf() && Designated) {
-      Lines.push_back(ChildIndent + ElementText(Element) + (HasNext ? "," : ""));
+    if (Element.isLeaf() && OnePerLine) {
+      Lines.push_back(ChildIndent + ElementText(Element) +
+                      (HasNext || Node.TrailingComma ? "," : ""));
       continue;
     }
     if (Element.isLeaf()) {
@@ -739,7 +761,7 @@ std::vector<std::string> renderAggregateNode(const AggregateNode &Node,
       HasPendingLeafLine = false;
     }
     Lines.insert(Lines.end(), ChildLines.begin(), ChildLines.end());
-    if (HasNext)
+    if (HasNext || Node.TrailingComma)
       Lines.back() += ",";
   }
 

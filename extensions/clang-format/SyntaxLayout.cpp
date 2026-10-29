@@ -162,6 +162,17 @@ bool isAggregateBrace(const FormatToken &Brace) {
          isAggregateBrace(*Opener);
 }
 
+// Whether an aggregate level contains another aggregate level. Innermost
+// levels hold scalars and stay on one line when they fit.
+bool hasNestedAggregateBrace(const FormatToken &Brace) {
+  for (const auto *Token = Brace.Next; Token && Token != Brace.MatchingParen;
+       Token = Token->Next) {
+    if (isAggregateBrace(*Token))
+      return true;
+  }
+  return false;
+}
+
 // An aggregate level whose elements were broken onto their own lines.
 bool isExpandedAggregateBrace(const FormatToken &Brace) {
   return isAggregateBrace(Brace) && Brace.Next &&
@@ -205,7 +216,7 @@ void expandNestedAggregate(AnnotatedLine &Line,
       FirstForcedBreak = &Token;
   };
   for (auto *Token = Line.First; Token; Token = Token->Next) {
-    if (isAggregateBrace(*Token)) {
+    if (isAggregateBrace(*Token) && hasNestedAggregateBrace(*Token)) {
       const auto *Previous = Token->getPreviousNonComment();
       const bool IsRoot = Previous && Previous->is(tok::equal);
       const bool StartsNestedLevel = Previous && Previous->is(tok::l_brace);
@@ -216,6 +227,15 @@ void expandNestedAggregate(AnnotatedLine &Line,
       if (Token->Next && Token->Next->isNot(tok::r_brace))
         ForceBreakBefore(*Token->Next);
       ForceBreakBefore(*Token->MatchingParen);
+      // Designated elements of an expanded level go one per line.
+      for (auto *Element = Token->Next; Element && Element != Token->MatchingParen;
+           Element = Element->Next) {
+        if (Element->is(tok::comma) && Element->Next &&
+            Element->Next->is(tok::period) &&
+            findEnclosingOpener(*Element) == Token) {
+          ForceBreakBefore(*Element->Next);
+        }
+      }
     } else if (Token->is(tok::comma) && Token->Next &&
                Token->NestingLevel > MaximumBraceLevel) {
       Token->Next->MustBreakBefore = false;
@@ -272,8 +292,9 @@ void attachFunctionSpecifierAssignment(AnnotatedLine &Line) {
   const FormatToken *DeclarationParen = nullptr;
   for (auto *Token = Line.First; Token; Token = Token->Next) {
     if (!DeclarationParen) {
-      if (Token->is(TT_FunctionDeclarationLParen) && Token->MatchingParen &&
-          Token->NestingLevel == 0) {
+      if (Token->isOneOf(TT_FunctionDeclarationLParen,
+                         TT_OverloadedOperatorLParen) &&
+          Token->MatchingParen && Token->NestingLevel == 0) {
         DeclarationParen = Token->MatchingParen;
         Token = Token->MatchingParen;
       }
@@ -1177,7 +1198,6 @@ std::optional<unsigned> getSyntaxNewLineColumn(const LineState &State,
   }
   // Only aggregate levels this option expanded get block indentation; other
   // braces keep LibFormat's layout.
-  const auto *OpeningToken = State.Stack.back().Tok;
   if (Style->ExpandNestedAggregateBraces) {
     if (isExpandedAggregateBrace(*State.NextToken)) {
       return State.FirstIndent +
@@ -1188,9 +1208,17 @@ std::optional<unsigned> getSyntaxNewLineColumn(const LineState &State,
       return State.FirstIndent + State.NextToken->MatchingParen->NestingLevel *
                                      FormatStyle.IndentWidth;
     }
-    if (OpeningToken && isExpandedAggregateBrace(*OpeningToken)) {
+    // An element starts after the opening brace or an element comma; its
+    // indentation comes from the enclosing aggregate level, not from
+    // continuation state such as a designator's `=`.
+    const auto *Previous = State.NextToken->getPreviousNonComment();
+    const auto *Opener = findEnclosingOpener(*State.NextToken);
+    if (Previous && Opener && isExpandedAggregateBrace(*Opener) &&
+        (Previous == Opener ||
+         (Previous->is(tok::comma) &&
+          findEnclosingOpener(*Previous) == Opener))) {
       return State.FirstIndent +
-             (OpeningToken->NestingLevel + 1) * FormatStyle.IndentWidth;
+             (Opener->NestingLevel + 1) * FormatStyle.IndentWidth;
     }
   }
   if (Style->BreakRequiresExpressionBraces &&

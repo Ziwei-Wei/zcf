@@ -33,7 +33,10 @@ struct Widget
         );
 
     friend bool
-    operator==(const Widget&, const Widget&);
+    operator==(
+        const Widget&,
+        const Widget&
+        );
 };
 
 void

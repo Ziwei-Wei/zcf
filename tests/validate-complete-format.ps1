@@ -215,10 +215,14 @@ $regressionContracts = [ordered]@{
         '{BasedOnStyle: LLVM, ColumnLimit: 140, ZCFExtensions: {ProgressiveArithmeticExpansion: true}}'
     'merged-block-trailing-comment-alignment' =
         '{BasedOnStyle: ZCF, ZCFExtensions: {BlankLinesAroundControlStatements: false}}'
+    'aggregate-comments-and-trailing-commas' =
+        '{BasedOnStyle: LLVM, ZCFExtensions: {ExpandNestedAggregateBraces: true}}'
     'designated-aggregate-expansion' =
         '{BasedOnStyle: LLVM, ColumnLimit: 120, ZCFExtensions: {ExpandNestedAggregateBraces: true}}'
     'macro-alignment-across-empty-lines' =
         '{BasedOnStyle: LLVM, AlignConsecutiveMacros: {Enabled: true, AcrossEmptyLines: true}, ZCFExtensions: {AlignMacrosAcrossDirectives: true, SeparatePreprocessorConditionalBlocks: true}}'
+    'operator-signature-layout' =
+        '{BasedOnStyle: LLVM, ZCFExtensions: {ForceMultilineFunctionSignatures: true, ArgumentIndentedClosingParentheses: true}}'
     'requires-clause-signature-indent' =
         '{BasedOnStyle: LLVM, ZCFExtensions: {ForceMultilineFunctionSignatures: true, BreakRequiresExpressionBraces: true}}'
     'qualified-signature-parameters' =
