@@ -60,7 +60,6 @@ $caseIds = @(
 )
 $optionCases = [ordered]@{
     DeindentQualifiedFunctionNames = 'qualified-function-name-continuation-indent'
-    SeparateDeletedFunctions = 'explicit-specifier-layout'
     BlankLinesAroundLabels = 'blank-lines-around-labels'
     IndentAttributedLabels = 'attributed-label-indentation'
     SeparateClosingDirectiveComments = 'preprocessor-closing-comment-alignment-boundary'
@@ -107,7 +106,7 @@ if ($disabledDump.Contains('ZCFExtensions:')) {
 
 $enabledDump = (
     & $FormatterExe "-style=file:$StyleFile" -dump-config `
-        (Join-Path $CaseDir 'blank-line-before-return.input.cpp') 2>&1
+        (Join-Path $CaseDir 'closing-parenthesis-argument-indent.input.cpp') 2>&1
 ) -join "`n"
 if ($LASTEXITCODE -ne 0) {
     throw "Enabled extension dump-config failed with exit code $LASTEXITCODE."
@@ -119,9 +118,10 @@ foreach ($option in @(
     'SeparateClosingDirectiveComments',
     'BodyDrivenLambdaExpansion',
     'VerticalTernaryExpressions',
-    'SeparateSwitchCaseBlocks',
     'ScopeStyleNestedTemplates',
-    'SeparateDefinitionBlocksFromAll'
+    'SeparateDefinitionBlocksFromAll',
+    'SeparateFunctionDeclarations',
+    'SeparatePreprocessorConditionalBlocks'
 )) {
     if (-not $enabledDump.Contains("${option}: true")) {
         throw "Enabled dump-config did not preserve $option."
@@ -187,26 +187,40 @@ $regressionContracts = [ordered]@{
     'attributed-label-namespace-indentation' = "file:$StyleFile"
     'qualified-name-nested-continuation' = "file:$StyleFile"
     'adjacent-string-literal-arguments' = "file:$StyleFile"
-    'return-blank-line-contexts' =
-        '{BasedOnStyle: LLVM, ZCFExtensions: {BlankLineBeforeReturn: true}}'
     'control-statement-trailing-comments' =
         '{BasedOnStyle: LLVM, ZCFExtensions: {BlankLinesAroundControlStatements: true}}'
     'nested-aggregate-standalone-layout' =
         '{BasedOnStyle: LLVM, ZCFExtensions: {ExpandNestedAggregateBraces: true}}'
     'lambda-chain-is-not-aggregate' = "file:$StyleFile"
     'separation-collapses-extra-blank-lines' =
-        '{BasedOnStyle: ZCF, MaxEmptyLinesToKeep: 3, ZCFExtensions: {BlankLineBeforeReturn: true}}'
+        '{BasedOnStyle: ZCF, MaxEmptyLinesToKeep: 3}'
     'separation-preserves-comments' = '{BasedOnStyle: ZCF}'
     'signature-pointer-and-explicit-parameters' =
         '{BasedOnStyle: LLVM, ZCFExtensions: {ForceMultilineFunctionSignatures: true}}'
     'pack-expansion-inheritance' =
         '{BasedOnStyle: LLVM, ZCFExtensions: {BreakPackExpansionInheritance: true}}'
     'separate-deleted-functions' =
-        '{BasedOnStyle: LLVM, ZCFExtensions: {SeparateDeletedFunctions: true}}'
+        '{BasedOnStyle: LLVM, ZCFExtensions: {SeparateFunctionDeclarations: true}}'
     'definition-separation-guards' =
         '{BasedOnStyle: LLVM, ZCFExtensions: {SeparateDefinitionBlocksFromAll: true}}'
+    'function-declarations-only' =
+        '{BasedOnStyle: LLVM, ZCFExtensions: {SeparateFunctionDeclarations: true}}'
+    'preprocessor-conditional-blocks-only' =
+        '{BasedOnStyle: LLVM, ZCFExtensions: {SeparatePreprocessorConditionalBlocks: true}}'
     'pack-indexed-function-brace' =
         '{BasedOnStyle: LLVM, Standard: c++20, BreakBeforeBraces: Allman, ZCFExtensions: {WrapPackIndexedFunctionBraces: true}}'
+    'function-specifier-assignment' =
+        '{BasedOnStyle: LLVM, BreakAfterReturnType: All, BreakBeforeBinaryOperators: All, ZCFExtensions: {ForceMultilineFunctionSignatures: true}}'
+    'arithmetic-ignores-call-argument-breaks' =
+        '{BasedOnStyle: LLVM, ColumnLimit: 140, ZCFExtensions: {ProgressiveArithmeticExpansion: true}}'
+    'merged-block-trailing-comment-alignment' =
+        '{BasedOnStyle: ZCF, ZCFExtensions: {BlankLinesAroundControlStatements: false}}'
+    'designated-aggregate-expansion' =
+        '{BasedOnStyle: LLVM, ColumnLimit: 120, ZCFExtensions: {ExpandNestedAggregateBraces: true}}'
+    'macro-alignment-across-empty-lines' =
+        '{BasedOnStyle: LLVM, AlignConsecutiveMacros: {Enabled: true, AcrossEmptyLines: true}, ZCFExtensions: {AlignMacrosAcrossDirectives: true, SeparatePreprocessorConditionalBlocks: true}}'
+    'requires-clause-signature-indent' =
+        '{BasedOnStyle: LLVM, ZCFExtensions: {ForceMultilineFunctionSignatures: true, BreakRequiresExpressionBraces: true}}'
     'qualified-signature-parameters' =
         '{BasedOnStyle: LLVM, IndentWidth: 4, ZCFExtensions: {ForceMultilineFunctionSignatures: true}}'
     'qualified-name-deindent-only' = "file:$deindentOnlyStyle"
@@ -307,12 +321,6 @@ $presetRuleContracts = @(
         Expected = Join-Path $CaseDir 'vertical-ternary-expressions.zcf.cpp'
     },
     @{
-        Option = 'SeparateSwitchCaseBlocks'
-        Case = 'switch-case-block-separation'
-        Input = Join-Path $CaseDir 'switch-case-block-separation.input.cpp'
-        Expected = Join-Path $CaseDir 'switch-case-block-separation.zcf.cpp'
-    },
-    @{
         Option = 'ScopeStyleNestedTemplates'
         Case = 'scope-style-nested-templates'
         Input = Join-Path $CaseDir 'scope-style-nested-templates.input.cpp'
@@ -326,9 +334,27 @@ $presetRuleContracts = @(
     },
     @{
         Option = 'SeparateDefinitionBlocksFromAll'
+        Case = 'lambda-definition-separation'
+        Input = Join-Path $CaseDir 'lambda-definition-separation.input.cpp'
+        Expected = Join-Path $CaseDir 'lambda-definition-separation.zcf.cpp'
+    },
+    @{
+        Option = 'SeparateFunctionDeclarations'
+        Case = 'function-declaration-separation'
+        Input = Join-Path $CaseDir 'function-declaration-separation.input.cpp'
+        Expected = Join-Path $CaseDir 'function-declaration-separation.zcf.cpp'
+    },
+    @{
+        Option = 'SeparatePreprocessorConditionalBlocks'
         Case = 'definition-block-separation'
         Input = Join-Path $CaseDir 'definition-block-separation.input.cpp'
         Expected = Join-Path $CaseDir 'definition-block-separation.zcf.cpp'
+    },
+    @{
+        Option = 'SeparatePreprocessorConditionalBlocks'
+        Case = 'preprocessor-conditional-block-separation'
+        Input = Join-Path $CaseDir 'preprocessor-conditional-block-separation.input.cpp'
+        Expected = Join-Path $CaseDir 'preprocessor-conditional-block-separation.zcf.cpp'
     },
     @{
         Option = 'ProgressiveCallExpansion'
@@ -457,7 +483,7 @@ Write-Host 'PASS ZCF preset canonical idempotence'
 
 $presetDump = (
     & $FormatterExe '-style={BasedOnStyle: ZCF}' -dump-config `
-        (Join-Path $CaseDir 'blank-line-before-return.input.cpp') 2>&1
+        (Join-Path $CaseDir 'closing-parenthesis-argument-indent.input.cpp') 2>&1
 ) -join "`n"
 if ($LASTEXITCODE -ne 0) {
     throw "ZCF preset dump-config failed with exit code $LASTEXITCODE."
@@ -466,7 +492,6 @@ $enabledPresetOptions = @(
     'ArgumentIndentedClosingParentheses',
     'ForceMultilineFunctionSignatures',
     'BreakConstructorDestructorSpecifiers',
-    'CompactSingleArgumentCalls',
     'ExpandNestedAggregateBraces',
     'BreakRequiresExpressionBraces',
     'BreakPackExpansionInheritance',
@@ -475,17 +500,16 @@ $enabledPresetOptions = @(
     'BlankLinesAroundControlStatements',
     'AlignMacrosAcrossDirectives',
     'DeindentQualifiedFunctionNames',
-    'SeparateDeletedFunctions',
     'SeparateDefinitionBlocksFromAll',
+    'SeparateFunctionDeclarations',
+    'SeparatePreprocessorConditionalBlocks',
     'BlankLinesAroundLabels',
     'IndentAttributedLabels',
     'SeparateClosingDirectiveComments',
     'ProgressiveCallExpansion',
     'ProgressiveArithmeticExpansion',
-    'CompactTwoOperandExpressions',
     'BodyDrivenLambdaExpansion',
     'VerticalTernaryExpressions',
-    'SeparateSwitchCaseBlocks',
     'ScopeStyleNestedTemplates'
 )
 foreach ($option in $enabledPresetOptions) {
@@ -539,7 +563,7 @@ $presetOptionContracts = @(
         Expected = $arithmeticExpected
     },
     @{
-        Option = 'CompactTwoOperandExpressions'
+        Option = 'ProgressiveArithmeticExpansion'
         Input = $compactOperandsInput
         Expected = $compactOperandsExpected
     }
@@ -578,8 +602,7 @@ const auto layered = sampleIndex
 $layeredCompactionStyle = @'
 {BasedOnStyle: LLVM, ColumnLimit: 60, BreakBeforeBinaryOperators: All,
  AlignOperands: DontAlign,
- ZCFExtensions: {ProgressiveArithmeticExpansion: true,
-                    CompactTwoOperandExpressions: true}}
+ ZCFExtensions: {ProgressiveArithmeticExpansion: true}}
 '@.Replace("`r", '').Replace("`n", ' ')
 & $FormatterExe "-style=$layeredCompactionStyle" -i $layeredCompactionInput
 if ($LASTEXITCODE -ne 0) {
@@ -602,7 +625,7 @@ const auto delta = measuredValueWithAVeryLongName - targetValueWithAVeryLongName
     [System.Text.UTF8Encoding]::new($false)
 )
 & $FormatterExe `
-    '-style={BasedOnStyle: LLVM, ColumnLimit: 40, IndentWidth: 4, ContinuationIndentWidth: 4, ZCFExtensions: {ProgressiveArithmeticExpansion: true, CompactTwoOperandExpressions: true}}' `
+    '-style={BasedOnStyle: LLVM, ColumnLimit: 40, IndentWidth: 4, ContinuationIndentWidth: 4, ZCFExtensions: {ProgressiveArithmeticExpansion: true}}' `
     -i $longTwoOperandInput
 if ($LASTEXITCODE -ne 0) {
     throw "Long two-operand formatting failed with exit code $LASTEXITCODE."
@@ -664,29 +687,28 @@ if (-not (Get-NormalizedText -Path $commentArithmeticInput).Contains(
 }
 Write-Host 'PASS comment-bearing arithmetic safety'
 
-# The preset leaves return separation to the author; an explicit override
-# enables it.
+# An explicit ZCFExtensions entry overrides the preset's value.
 foreach ($override in @(
-    @{ Style = '{BasedOnStyle: ZCF}'; Separated = $false },
+    @{ Style = '{BasedOnStyle: ZCF}'; Expected = 'int value = 0xFF;' },
     @{
-        Style = '{BasedOnStyle: ZCF, ZCFExtensions: {BlankLineBeforeReturn: true}}'
-        Separated = $true
+        Style = '{BasedOnStyle: ZCF, ZCFExtensions: {NormalizeIntegerLiteralCase: false}}'
+        Expected = 'int value = 0Xff;'
     }
 )) {
     $overrideInput = Join-Path $WorkDir 'preset-override.cpp'
     [System.IO.File]::WriteAllText(
         $overrideInput,
-        "int run() { work(); return 1; }`n",
+        "int value = 0Xff;`n",
         [System.Text.UTF8Encoding]::new($false)
     )
     & $FormatterExe "-style=$($override.Style)" -i $overrideInput
     if ($LASTEXITCODE -ne 0) {
         throw "ZCF option override failed with exit code $LASTEXITCODE."
     }
-    if ((Get-NormalizedText -Path $overrideInput).Contains(
-        "work();`n`n    return 1;"
-    ) -ne $override.Separated) {
-        throw "Return separation is wrong for $($override.Style)."
+    if (-not (Get-NormalizedText -Path $overrideInput).Contains(
+        $override.Expected
+    )) {
+        throw "Integer literal case is wrong for $($override.Style)."
     }
 }
 Write-Host 'PASS ZCF preset option override'
@@ -705,7 +727,7 @@ BasedOnStyle: LLVM
 )
 $presetResetDump = (
     & $FormatterExe "-style=file:$presetResetStyle" -dump-config `
-        (Join-Path $CaseDir 'blank-line-before-return.input.cpp') 2>&1
+        (Join-Path $CaseDir 'closing-parenthesis-argument-indent.input.cpp') 2>&1
 ) -join "`n"
 if ($LASTEXITCODE -ne 0) {
     throw "ZCF language reset failed with exit code $LASTEXITCODE."
@@ -721,7 +743,7 @@ class Sample
     int Run()
     {
         Work();
-        return 1;
+        return 0Xff;
     }
 }
 '@
@@ -742,7 +764,7 @@ if ($LASTEXITCODE -ne 0) {
     throw "Non-C++ baseline formatting failed with exit code $LASTEXITCODE."
 }
 $nonCppExtensionStyle =
-    '{BasedOnStyle: Microsoft, ZCFExtensions: {BlankLineBeforeReturn: true}}'
+    '{BasedOnStyle: Microsoft, ZCFExtensions: {NormalizeIntegerLiteralCase: true}}'
 & $FormatterExe "-style=$nonCppExtensionStyle" -i $nonCppExtension
 if ($LASTEXITCODE -ne 0) {
     throw "Non-C++ extension formatting failed with exit code $LASTEXITCODE."
@@ -779,18 +801,23 @@ if ((Get-NormalizedText -Path $nonCppZCF) -cne
 }
 Write-Host 'PASS non-C++ ZCF fallback'
 
+# Options that produce the same blank lines as the tested option are disabled
+# so the tested option must reproduce its target alone.
+$overlappingOptions = @{
+    BlankLinesAroundLabels = @('BlankLinesAroundControlStatements')
+}
 foreach ($entry in $optionCases.GetEnumerator()) {
     $option = [string]$entry.Key
     $caseId = [string]$entry.Value
     $optionStyle = Join-Path $WorkDir "$option.disabled.clang-format"
     $styleText = [System.IO.File]::ReadAllText($StyleFile)
-    if ($option -ceq 'BlankLinesAroundLabels') {
-        $styleText = $styleText.
-            Replace('  BlankLineBeforeReturn: true', '  BlankLineBeforeReturn: false').
-            Replace(
-                '  BlankLinesAroundControlStatements: true',
-                '  BlankLinesAroundControlStatements: false'
+    if ($overlappingOptions.ContainsKey($option)) {
+        foreach ($overlapping in $overlappingOptions[$option]) {
+            $styleText = $styleText.Replace(
+                "  ${overlapping}: true",
+                "  ${overlapping}: false"
             )
+        }
         $enabledStyle = Join-Path $WorkDir "$option.enabled.clang-format"
         $enabledActual = Join-Path $WorkDir "$option.enabled.cpp"
         [System.IO.File]::WriteAllText(

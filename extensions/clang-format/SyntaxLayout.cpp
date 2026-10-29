@@ -101,32 +101,6 @@ const FormatToken *findEnclosingCallParen(const AnnotatedLine &Line,
   return nullptr;
 }
 
-bool hasOneSimpleArgument(const FormatToken &LeftParen) {
-  if (!isNonEmptyParen(LeftParen))
-    return false;
-  const auto *RightParen = LeftParen.MatchingParen;
-  for (const auto *Token = LeftParen.Next; Token && Token != RightParen;
-       Token = Token->Next) {
-    if (Token->is(tok::comma) &&
-        Token->NestingLevel == LeftParen.NestingLevel + 1) {
-      return false;
-    }
-    if (Token->isOneOf(tok::comment, tok::semi))
-      return false;
-  }
-  return true;
-}
-
-void compactSingleArgumentCall(FormatToken &LeftParen) {
-  auto *RightParen = LeftParen.MatchingParen;
-  for (auto *Token = LeftParen.Next; Token; Token = Token->Next) {
-    Token->MustBreakBefore = false;
-    Token->NewlinesBefore = 0;
-    if (Token == RightParen)
-      break;
-  }
-}
-
 void breakConstructorDestructorSpecifier(AnnotatedLine &Line) {
   for (auto *Specifier = Line.First; Specifier; Specifier = Specifier->Next) {
     if (!Specifier->isOneOf(tok::kw_constexpr, tok::kw_consteval,
@@ -152,6 +126,49 @@ void breakConstructorDestructorSpecifier(AnnotatedLine &Line) {
   }
 }
 
+// The innermost bracket on the line that encloses Token, or null.
+const FormatToken *findEnclosingOpener(const FormatToken &Token) {
+  for (const auto *Previous = Token.Previous; Previous;
+       Previous = Previous->Previous) {
+    if (Previous->isOneOf(tok::r_paren, tok::r_square, tok::r_brace,
+                          TT_TemplateCloser) &&
+        Previous->MatchingParen) {
+      Previous = Previous->MatchingParen;
+      continue;
+    }
+    if (Previous->isOneOf(tok::l_paren, tok::l_square, tok::l_brace,
+                          TT_TemplateOpener)) {
+      return Previous;
+    }
+  }
+  return nullptr;
+}
+
+// An aggregate level: the brace initializing an assignment or designator, or
+// an element brace directly inside another aggregate level. Constructor
+// braces such as `T{...}` and lambda bodies are not aggregate levels.
+bool isAggregateBrace(const FormatToken &Brace) {
+  if (Brace.isNot(tok::l_brace) || Brace.is(TT_LambdaLBrace) ||
+      !Brace.MatchingParen) {
+    return false;
+  }
+  const auto *Previous = Brace.getPreviousNonComment();
+  if (!Previous)
+    return false;
+  const auto *Opener = findEnclosingOpener(Brace);
+  if (Previous->is(tok::equal))
+    return !Opener || isAggregateBrace(*Opener);
+  return Previous->isOneOf(tok::l_brace, tok::comma) && Opener &&
+         isAggregateBrace(*Opener);
+}
+
+// An aggregate level whose elements were broken onto their own lines.
+bool isExpandedAggregateBrace(const FormatToken &Brace) {
+  return isAggregateBrace(Brace) && Brace.Next &&
+         (Brace.Next == Brace.MatchingParen || Brace.Next->MustBreakBefore) &&
+         Brace.MatchingParen->MustBreakBefore;
+}
+
 void expandNestedAggregate(AnnotatedLine &Line,
                            const FormatStyle &FormatStyle) {
   unsigned MaximumBraceLevel = 0;
@@ -161,8 +178,7 @@ void expandNestedAggregate(AnnotatedLine &Line,
   bool SawBrace = false;
   for (const auto *Token = Line.First; Token; Token = Token->Next) {
     HasAssignment |= Token->is(tok::equal);
-    // Lambda bodies are not aggregate levels.
-    if (Token->is(tok::l_brace) && Token->isNot(TT_LambdaLBrace)) {
+    if (isAggregateBrace(*Token)) {
       ++BraceCount;
       if (!SawBrace) {
         MinimumBraceLevel = Token->NestingLevel;
@@ -189,7 +205,7 @@ void expandNestedAggregate(AnnotatedLine &Line,
       FirstForcedBreak = &Token;
   };
   for (auto *Token = Line.First; Token; Token = Token->Next) {
-    if (Token->is(tok::l_brace)) {
+    if (isAggregateBrace(*Token)) {
       const auto *Previous = Token->getPreviousNonComment();
       const bool IsRoot = Previous && Previous->is(tok::equal);
       const bool StartsNestedLevel = Previous && Previous->is(tok::l_brace);
@@ -199,8 +215,7 @@ void expandNestedAggregate(AnnotatedLine &Line,
         ForceBreakBefore(*Token);
       if (Token->Next && Token->Next->isNot(tok::r_brace))
         ForceBreakBefore(*Token->Next);
-    } else if (Token->is(tok::r_brace) && Token->MatchingParen) {
-      ForceBreakBefore(*Token);
+      ForceBreakBefore(*Token->MatchingParen);
     } else if (Token->is(tok::comma) && Token->Next &&
                Token->NestingLevel > MaximumBraceLevel) {
       Token->Next->MustBreakBefore = false;
@@ -246,6 +261,37 @@ void breakFunctionPointerParameters(AnnotatedLine &Line) {
     }
     if (HasPointer)
       forceMultilineList(*Token);
+  }
+}
+
+// Keeps `= delete`, `= default`, and pure-virtual `= 0` on the line of the
+// parameter list's closing parenthesis. With BreakBeforeBinaryOperators the
+// upstream indenter otherwise breaks before that `=` whenever the return type
+// was broken onto its own line.
+void attachFunctionSpecifierAssignment(AnnotatedLine &Line) {
+  const FormatToken *DeclarationParen = nullptr;
+  for (auto *Token = Line.First; Token; Token = Token->Next) {
+    if (!DeclarationParen) {
+      if (Token->is(TT_FunctionDeclarationLParen) && Token->MatchingParen &&
+          Token->NestingLevel == 0) {
+        DeclarationParen = Token->MatchingParen;
+        Token = Token->MatchingParen;
+      }
+      continue;
+    }
+    if (Token->NestingLevel != 0 || Token->isNot(tok::equal) || !Token->Next)
+      continue;
+    const FormatToken &Value = *Token->Next;
+    const bool Specifier =
+        (Value.isOneOf(tok::kw_delete, tok::kw_default) &&
+         Value.Next && Value.Next->isOneOf(tok::semi, tok::l_paren)) ||
+        (Value.is(tok::numeric_constant) && Value.TokenText == "0" &&
+         Value.Next && Value.Next->is(tok::semi));
+    if (Specifier) {
+      Token->MustBreakBefore = false;
+      Token->CanBreakBefore = false;
+    }
+    return;
   }
 }
 
@@ -942,10 +988,15 @@ void expandArithmeticExpression(AnnotatedLine &Line,
   const bool FullLineOverflows =
       FullLineWidth &&
       Line.First->OriginalColumn + *FullLineWidth > FormatStyle.ColumnLimit;
+  // Only breaks the author placed around arithmetic operators make the
+  // expression multi-line; breaks between call arguments belong to calls.
   bool IsMultiline = ExpressionBegin->NewlinesBefore > 0;
   unsigned RootOperators = 0;
   for (const auto *Token = ExpressionBegin; Token; Token = Token->Next) {
-    IsMultiline |= Token->NewlinesBefore > 0;
+    const auto *Previous = Token->getPreviousNonComment();
+    IsMultiline |= Token->NewlinesBefore > 0 &&
+                   (isArithmeticOperator(*Token) ||
+                    (Previous && isArithmeticOperator(*Previous)));
     if (Token->NestingLevel == ExpressionBegin->NestingLevel &&
         isArithmeticOperator(*Token)) {
       ++RootOperators;
@@ -1012,16 +1063,9 @@ void customizeSyntaxLayout(AnnotatedLine &Line,
   if (Style->BreakConstructorDestructorSpecifiers)
     breakConstructorDestructorSpecifier(Line);
 
-  if (Style->CompactSingleArgumentCalls) {
-    for (auto *Token = Line.First; Token; Token = Token->Next) {
-      if (isCallParen(Line, *Token) && hasOneSimpleArgument(*Token) &&
-          !hasRequiredStringLiteralBreak(*Token, FormatStyle)) {
-        compactSingleArgumentCall(*Token);
-      }
-    }
-  }
-
-  if (Style->CompactTwoOperandExpressions)
+  // Two-operand expressions that fit stay compact under progressive
+  // arithmetic expansion.
+  if (Style->ProgressiveArithmeticExpansion)
     compactTwoOperandExpressions(Line, FormatStyle);
   if (Style->BodyDrivenLambdaExpansion)
     expandBodyDrivenLambdas(Line, FormatStyle);
@@ -1040,8 +1084,10 @@ void customizeSyntaxLayout(AnnotatedLine &Line,
     breakPackExpansionInheritance(Line);
   if (Style->WrapPackIndexedFunctionBraces)
     wrapPackIndexedFunctionBrace(Line, FormatStyle);
-  if (Style->ForceMultilineFunctionSignatures)
+  if (Style->ForceMultilineFunctionSignatures) {
     breakFunctionPointerParameters(Line);
+    attachFunctionSpecifierAssignment(Line);
+  }
 }
 
 std::optional<unsigned> getSyntaxNewLineColumn(const LineState &State,
@@ -1129,27 +1175,26 @@ std::optional<unsigned> getSyntaxNewLineColumn(const LineState &State,
              (Previous->NestingLevel + 2) * FormatStyle.ContinuationIndentWidth;
     }
   }
+  // Only aggregate levels this option expanded get block indentation; other
+  // braces keep LibFormat's layout.
   const auto *OpeningToken = State.Stack.back().Tok;
-  if (Style->ExpandNestedAggregateBraces && OpeningToken) {
-    if (State.NextToken->is(tok::l_brace)) {
+  if (Style->ExpandNestedAggregateBraces) {
+    if (isExpandedAggregateBrace(*State.NextToken)) {
       return State.FirstIndent +
              State.NextToken->NestingLevel * FormatStyle.IndentWidth;
     }
-    if (State.NextToken->is(tok::r_brace) && State.NextToken->MatchingParen) {
+    if (State.NextToken->is(tok::r_brace) && State.NextToken->MatchingParen &&
+        isExpandedAggregateBrace(*State.NextToken->MatchingParen)) {
       return State.FirstIndent + State.NextToken->MatchingParen->NestingLevel *
                                      FormatStyle.IndentWidth;
     }
-    if (OpeningToken->is(tok::l_brace)) {
+    if (OpeningToken && isExpandedAggregateBrace(*OpeningToken)) {
       return State.FirstIndent +
              (OpeningToken->NestingLevel + 1) * FormatStyle.IndentWidth;
     }
   }
   if (Style->BreakRequiresExpressionBraces &&
       State.NextToken->is(TT_RequiresExpressionLBrace)) {
-    return State.FirstIndent;
-  }
-  if (Style->BreakRequiresExpressionBraces &&
-      State.Line->Type == LT_RequiresExpression) {
     return State.FirstIndent;
   }
   return std::nullopt;

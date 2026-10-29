@@ -52,8 +52,6 @@ if (-not (Test-Path -LiteralPath $CaseDir -PathType Container)) {
 
 $caseIds = @(
     'break-constructor-destructor-specifiers',
-    'single-argument-call-compaction',
-    'single-argument-call-author-breaks',
     'nested-aggregate-brace-expansion',
     'requires-expression-brace-layout',
     'parameter-pack-layout',
@@ -64,10 +62,6 @@ $caseIds = @(
 )
 $optionCases = [ordered]@{
     BreakConstructorDestructorSpecifiers = 'break-constructor-destructor-specifiers'
-    CompactSingleArgumentCalls = @(
-        'single-argument-call-compaction',
-        'single-argument-call-author-breaks'
-    )
     ExpandNestedAggregateBraces = 'nested-aggregate-brace-expansion'
     BreakRequiresExpressionBraces = 'requires-expression-brace-layout'
     NormalizeIntegerLiteralCase = 'integer-literal-case-normalization'
@@ -116,14 +110,13 @@ if ($disabledDump.Contains('ZCFExtensions:')) {
 
 $enabledDump = (
     & $FormatterExe "-style=file:$StyleFile" -dump-config `
-        (Join-Path $CaseDir 'blank-line-before-return.input.cpp') 2>&1
+        (Join-Path $CaseDir 'closing-parenthesis-argument-indent.input.cpp') 2>&1
 ) -join "`n"
 if ($LASTEXITCODE -ne 0) {
     throw "Enabled extension dump-config failed with exit code $LASTEXITCODE."
 }
 foreach ($option in @(
     'BreakConstructorDestructorSpecifiers',
-    'CompactSingleArgumentCalls',
     'ExpandNestedAggregateBraces',
     'BreakRequiresExpressionBraces',
     'BreakPackExpansionInheritance',

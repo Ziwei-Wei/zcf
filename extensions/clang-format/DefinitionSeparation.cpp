@@ -1,5 +1,7 @@
 #include "extensions/clang-format/PostFormatSource.h"
 
+#include "extensions/clang-format/ExtensionStyle.h"
+
 #include "TokenAnalyzer.h"
 #include "TokenAnnotator.h"
 
@@ -13,6 +15,8 @@ struct TokenFacts {
   bool BracedInit = false;
   bool RequiresExpression = false;
   bool LambdaBody = false;
+  // A function declaration's name or parameter list opener.
+  bool FunctionDeclaration = false;
   bool TemplateOpener = false;
   bool TemplateCloser = false;
   bool LineStart = false;
@@ -30,9 +34,11 @@ public:
       : TokenAnalyzer(Env, Style), Facts(Facts) {}
 
   std::pair<tooling::Replacements, unsigned>
-  analyze(TokenAnnotator &, SmallVectorImpl<AnnotatedLine *> &Lines,
+  analyze(TokenAnnotator &Annotator, SmallVectorImpl<AnnotatedLine *> &Lines,
           FormatTokenLexer &) override {
-    for (const AnnotatedLine *Line : Lines) {
+    for (AnnotatedLine *Line : Lines) {
+      // Function declaration parentheses are classified here.
+      Annotator.calculateFormattingInformation(*Line);
       if (!Line->InPPDirective)
         facts(*Line->First).LineStart = true;
       record(*Line);
@@ -54,6 +60,10 @@ private:
         facts(*Token).RequiresExpression = true;
       if (Token->is(TT_LambdaLBrace))
         facts(*Token).LambdaBody = true;
+      if (Token->isOneOf(TT_FunctionDeclarationName,
+                         TT_FunctionDeclarationLParen)) {
+        facts(*Token).FunctionDeclaration = true;
+      }
       if (Token->is(TT_TemplateOpener))
         facts(*Token).TemplateOpener = true;
       if (Token->is(TT_TemplateCloser))
@@ -78,6 +88,8 @@ struct Item {
   // A statement without `;` or a body that ends where the parser starts a new
   // line, such as a decorating macro (`MIDL_INTERFACE(...)`).
   bool Unterminated = false;
+  // A function declaration without a body, such as `int f();`.
+  bool FunctionDeclaration = false;
 };
 
 enum class BodyKind { Namespace, Linkage, Type, Function };
@@ -86,9 +98,11 @@ class DefinitionSeparator {
 public:
   DefinitionSeparator(const PostFormatSource &Source,
                       const std::unordered_map<unsigned, TokenFacts> &Facts,
+                      const ExtensionStyle &Extensions, bool BeforeFormatting,
                       AffectedRangeManager &AffectedRangeMgr,
                       std::vector<PendingReplacement> &Pending)
       : Source(Source), Tokens(Source.Tokens), Facts(Facts),
+        Extensions(Extensions), BeforeFormatting(BeforeFormatting),
         AffectedRangeMgr(AffectedRangeMgr), Pending(Pending) {}
 
   void run() { separateScope(0, Tokens.size(), false); }
@@ -169,6 +183,7 @@ private:
     bool SawEnum = false;
     bool StartsNamespace = false;
     bool StartsLinkage = false;
+    bool SawFunctionDeclaration = false;
     for (unsigned I = First; I < End; ++I) {
       if (inDirective(I))
         continue;
@@ -200,6 +215,10 @@ private:
         if (Second != Facts.end() && Second->second.TemplateCloser)
           --TemplateDepth;
       }
+      if (ParenDepth == 0 && TemplateDepth == 0) {
+        const TokenFacts *Facts = facts(I);
+        SawFunctionDeclaration |= Facts && Facts->FunctionDeclaration;
+      }
       if (Token.Tok.isOneOf(tok::l_paren, tok::l_square)) {
         ++ParenDepth;
         continue;
@@ -226,8 +245,10 @@ private:
       SawEnum |= Text == "enum";
       SawAssignment |= Token.Tok.is(tok::equal) &&
                        Tokens[I - 1].Text != "operator";
-      if (Token.Tok.is(tok::semi))
+      if (Token.Tok.is(tok::semi)) {
+        Statement.FunctionDeclaration = SawFunctionDeclaration && !Block;
         return Statement;
+      }
       if (Token.Tok.isNot(tok::l_brace))
         continue;
 
@@ -244,8 +265,8 @@ private:
       if (!Body) {
         if (Facts && Facts->LambdaBody) {
           Statement.Definition |=
-              SawAssignment && lastLine(static_cast<unsigned>(Close)) !=
-                                   Tokens[I].LineIndex;
+              !BeforeFormatting && SawAssignment &&
+              lastLine(static_cast<unsigned>(Close)) != Tokens[I].LineIndex;
           separateScope(I + 1, static_cast<unsigned>(Close), true);
         }
         I = static_cast<unsigned>(Close);
@@ -282,6 +303,46 @@ private:
     return Statement;
   }
 
+  enum class ConditionalKind { None, Open, Branch, Close };
+
+  ConditionalKind conditionalKind(const Item &Directive) const {
+    if (Directive.Kind != ItemKind::Directive ||
+        Directive.First == Directive.Last ||
+        Tokens[Directive.First].Tok.isNot(tok::hash)) {
+      return ConditionalKind::None;
+    }
+    const StringRef Name = Tokens[Directive.First + 1].Text;
+    if (Name == "if" || Name == "ifdef" || Name == "ifndef")
+      return ConditionalKind::Open;
+    if (Name == "elif" || Name == "elifdef" || Name == "elifndef" ||
+        Name == "else") {
+      return ConditionalKind::Branch;
+    }
+    if (Name == "endif")
+      return ConditionalKind::Close;
+    return ConditionalKind::None;
+  }
+
+  // Returns the index of the directive closing the conditional opened at
+  // Open, or End when it is not closed before End.
+  size_t findConditionalClose(const std::vector<Item> &Items, size_t Open,
+                              size_t End) const {
+    unsigned Depth = 0;
+    for (size_t I = Open + 1; I < End; ++I) {
+      const ConditionalKind Kind = conditionalKind(Items[I]);
+      if (Kind == ConditionalKind::Open) {
+        ++Depth;
+      } else if (Kind == ConditionalKind::Close) {
+        if (Depth == 0)
+          return I;
+        --Depth;
+      }
+    }
+    return End;
+  }
+
+  // Separates definitions and function declarations from every neighbor,
+  // including directive lines, and conditional groups from their neighbors.
   void separateItems(std::vector<Item> &Items) {
     // Comment and decorating macro lines directly above a definition belong
     // to it.
@@ -291,7 +352,7 @@ private:
           Previous.Kind == ItemKind::Comment ||
           (Previous.Kind == ItemKind::Statement && Previous.Unterminated &&
            !Previous.Definition);
-      if (!Items[I].Definition || !Attaches ||
+      if (!separable(Items[I]) || !Attaches ||
           Tokens[Items[I].First].LineIndex != lastLine(Previous.Last) + 1) {
         continue;
       }
@@ -300,12 +361,63 @@ private:
     }
 
     for (size_t I = 0; I < Items.size(); ++I) {
-      if (!Items[I].Definition)
+      if (!separable(Items[I]))
         continue;
       if (I > 0 && Items[I - 1].Kind != ItemKind::AccessSpecifier)
         queueBlankLineBetween(Items[I - 1].Last, Items[I].First);
       if (I + 1 < Items.size())
         queueBlankLineBetween(Items[I].Last, Items[I + 1].First);
+    }
+
+    if (Extensions.SeparatePreprocessorConditionalBlocks)
+      separateConditionalGroups(Items, 0, Items.size());
+  }
+
+  bool separable(const Item &Candidate) const {
+    return (Candidate.Definition &&
+            Extensions.SeparateDefinitionBlocksFromAll) ||
+           (Candidate.FunctionDeclaration &&
+            Extensions.SeparateFunctionDeclarations);
+  }
+
+  // Separates each balanced `#if`...`#endif` group in [Begin, End) from its
+  // neighbors, then the groups nested in each of its branches. Comment lines
+  // directly above `#if` stay attached to the group.
+  void separateConditionalGroups(const std::vector<Item> &Items, size_t Begin,
+                                 size_t End) {
+    for (size_t I = Begin; I < End; ++I) {
+      if (conditionalKind(Items[I]) != ConditionalKind::Open)
+        continue;
+      const size_t Close = findConditionalClose(Items, I, End);
+      if (Close == End)
+        continue;
+      size_t Leading = I;
+      while (Leading > Begin &&
+             Items[Leading - 1].Kind == ItemKind::Comment &&
+             Tokens[Items[Leading].First].LineIndex ==
+                 lastLine(Items[Leading - 1].Last) + 1) {
+        --Leading;
+      }
+      if (Leading > Begin &&
+          Items[Leading - 1].Kind != ItemKind::AccessSpecifier) {
+        queueBlankLineBetween(Items[Leading - 1].Last, Items[Leading].First);
+      }
+      if (Close + 1 < End)
+        queueBlankLineBetween(Items[Close].Last, Items[Close + 1].First);
+
+      size_t BranchBegin = I + 1;
+      for (size_t J = I + 1; J <= Close; ++J) {
+        const ConditionalKind Kind = conditionalKind(Items[J]);
+        if (Kind == ConditionalKind::Open) {
+          J = findConditionalClose(Items, J, Close);
+          continue;
+        }
+        if (Kind == ConditionalKind::None)
+          continue;
+        separateConditionalGroups(Items, BranchBegin, J);
+        BranchBegin = J + 1;
+      }
+      I = Close;
     }
   }
 
@@ -320,12 +432,16 @@ private:
     }
     queueSingleBlankLine(Pending, Source.Code, Previous.EndOffset, Next.Offset,
                          Source.DefaultLineEnding,
-                         "SeparateDefinitionBlocksFromAll");
+                         "DefinitionSeparation");
   }
 
   const PostFormatSource &Source;
   const std::vector<TokenInfo> &Tokens;
   const std::unordered_map<unsigned, TokenFacts> &Facts;
+  const ExtensionStyle &Extensions;
+  // Lambda layout is unknown before formatting, so lambdas are left to the
+  // post-format pass.
+  const bool BeforeFormatting;
   AffectedRangeManager &AffectedRangeMgr;
   std::vector<PendingReplacement> &Pending;
 };
@@ -335,11 +451,15 @@ private:
 void collectDefinitionSeparationFixes(const Environment &Env,
                                       const FormatStyle &Style,
                                       const PostFormatSource &Source,
+                                      const ExtensionStyle &Extensions,
+                                      bool BeforeFormatting,
                                       AffectedRangeManager &AffectedRangeMgr,
                                       std::vector<PendingReplacement> &Pending) {
   std::unordered_map<unsigned, TokenFacts> Facts;
   TokenFactCollector(Env, Style, Facts).process();
-  DefinitionSeparator(Source, Facts, AffectedRangeMgr, Pending).run();
+  DefinitionSeparator(Source, Facts, Extensions, BeforeFormatting,
+                      AffectedRangeMgr, Pending)
+      .run();
 }
 
 } // namespace clang::format::extensions

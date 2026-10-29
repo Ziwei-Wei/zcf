@@ -116,6 +116,78 @@ getExtensionNewLineColumn(const LineState &State,
   return State.Stack.back().Indent;
 }
 
+bool separatesDefinitions(const ExtensionStyle &Extensions) {
+  return Extensions.SeparateDefinitionBlocksFromAll ||
+         Extensions.SeparateFunctionDeclarations ||
+         Extensions.SeparatePreprocessorConditionalBlocks;
+}
+
+// Blank-line separation runs before LibFormat, like upstream
+// SeparateDefinitionBlocks, so alignment of trailing comments and macros sees
+// the separated blocks. The post-format pass repeats it for layout-dependent
+// cases such as lambdas that only become multi-line while formatting.
+std::pair<tooling::Replacements, unsigned>
+runExtensionPreFormatPass(const Environment &Env, const FormatStyle &Style) {
+  const auto *Extensions = getActiveExtensionStyleConst();
+  if (!Extensions || !separatesDefinitions(*Extensions) ||
+      Style.Language != FormatStyle::LK_Cpp) {
+    return {};
+  }
+
+  const PostFormatSource Source = scanPostFormatSource(Env, Style);
+  AffectedRangeManager AffectedRangeMgr(Env.getSourceManager(),
+                                        Env.getCharRanges());
+  std::vector<PendingReplacement> Pending;
+  collectDefinitionSeparationFixes(Env, Style, Source, *Extensions,
+                                   /*BeforeFormatting=*/true, AffectedRangeMgr,
+                                   Pending);
+  return {
+      buildReplacements(Pending, Env.getSourceManager(), Source.StartOfFile),
+      0};
+}
+
+// LLVM 20 decides whether a trailing comment after `}` ends a scope from the
+// brace's original line break, so a short block it merges onto one line keeps
+// its comment out of the alignment run until the next formatting pass. When
+// such a brace was merged, formatting and the post-format pass are repeated
+// once, after the extension blank lines exist, so that a single zcf run is
+// already stable.
+bool extensionNeedsReformat(const Environment &Env, const FormatStyle &Style) {
+  const auto *Extensions = getActiveExtensionStyleConst();
+  if (!Extensions || !Extensions->anyEnabled() ||
+      Style.Language != FormatStyle::LK_Cpp ||
+      Style.AlignTrailingComments.Kind != FormatStyle::TCAS_Always) {
+    return false;
+  }
+
+  const PostFormatSource Source = scanPostFormatSource(Env, Style);
+  const auto &Tokens = Source.Tokens;
+  for (const PhysicalLine &Line : Source.Lines) {
+    if (Line.Disabled || !Line.FirstNonCommentToken ||
+        !Line.LastNonCommentToken ||
+        Line.Tokens.back() == *Line.LastNonCommentToken) {
+      continue;
+    }
+    for (unsigned Index : Line.Tokens) {
+      if (Index == *Line.FirstNonCommentToken ||
+          Tokens[Index].Tok.isNot(tok::r_brace)) {
+        continue;
+      }
+      // Only a block brace merged onto its header line, not a braced
+      // initializer, is affected.
+      const int Open = Source.MatchingBraces[Index];
+      if (Open <= 0 || Tokens[Open].LineIndex != Tokens[Index].LineIndex)
+        continue;
+      const StringRef Before = Tokens[Open - 1].Text;
+      if (Before == ")" || Before == "else" || Before == "do" ||
+          Before == "try") {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 std::pair<tooling::Replacements, unsigned>
 runExtensionPostFormatPass(const Environment &Env, const FormatStyle &Style) {
   const auto *Extensions = getActiveExtensionStyleConst();
@@ -132,9 +204,11 @@ runExtensionPostFormatPass(const Environment &Env, const FormatStyle &Style) {
   std::vector<PendingReplacement> Pending;
   collectStructuralFixes(Source, Style, *Extensions, AffectedRangeMgr, Pending);
   collectBoundaryFixes(Source, Style, *Extensions, AffectedRangeMgr, Pending);
-  if (Extensions->SeparateDefinitionBlocksFromAll)
-    collectDefinitionSeparationFixes(Env, Style, Source, AffectedRangeMgr,
-                                     Pending);
+  if (separatesDefinitions(*Extensions)) {
+    collectDefinitionSeparationFixes(Env, Style, Source, *Extensions,
+                                     /*BeforeFormatting=*/false,
+                                     AffectedRangeMgr, Pending);
+  }
   return {
       buildReplacements(Pending, Env.getSourceManager(), Source.StartOfFile),
       0};

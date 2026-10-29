@@ -1,4 +1,5 @@
-#define VALUE_A 1       // first value
+#define VALUE_A 1 // first value
+
 #if defined(ZCF_BRANCH) // selected branch
 #define VALUE_B 2       // selected value
 #else // fallback branch

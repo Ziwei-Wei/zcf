@@ -154,9 +154,7 @@ UseTab: Never
 ZCFExtensions:
   ArgumentIndentedClosingParentheses: true
   ForceMultilineFunctionSignatures: true
-  BlankLineBeforeReturn: true
   BreakConstructorDestructorSpecifiers: true
-  CompactSingleArgumentCalls: true
   ExpandNestedAggregateBraces: true
   BreakRequiresExpressionBraces: true
   BreakPackExpansionInheritance: true
@@ -165,16 +163,15 @@ ZCFExtensions:
   BlankLinesAroundControlStatements: true
   AlignMacrosAcrossDirectives: true
   DeindentQualifiedFunctionNames: true
-  SeparateDeletedFunctions: true
   SeparateDefinitionBlocksFromAll: true
+  SeparateFunctionDeclarations: true
+  SeparatePreprocessorConditionalBlocks: true
   BlankLinesAroundLabels: true
   IndentAttributedLabels: true
   SeparateClosingDirectiveComments: true
   ProgressiveCallExpansion: true
   ProgressiveArithmeticExpansion: true
-  CompactTwoOperandExpressions: true
   BodyDrivenLambdaExpansion: true
   VerticalTernaryExpressions: true
-  SeparateSwitchCaseBlocks: true
   ScopeStyleNestedTemplates: true
 ...

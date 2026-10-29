@@ -19,6 +19,7 @@ select(
 }
 
 #endif
+
 #if defined(__cpp_variadic_friend) && __cpp_variadic_friend >= 202403L
 
 template <typename... TrustedTypes>
@@ -28,6 +29,7 @@ struct Vault
 };
 
 #endif
+
 int
 declared();
 
@@ -38,6 +40,7 @@ struct Point
 };
 
 int counter = 0;
+
 #ifdef ZCF_TRACE
 
 int

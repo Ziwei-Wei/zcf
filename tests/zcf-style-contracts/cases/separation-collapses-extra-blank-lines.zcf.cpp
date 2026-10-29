@@ -17,6 +17,8 @@ done:
 
     cleanup();
 
+
+
     return value;
 }
 
@@ -41,6 +43,8 @@ pick(
             work();
             break;
         }
+
+
 
         default: break;
     }
@@ -83,9 +87,11 @@ done: // label comment
             break;
         } // end case
 
+
         /* lead */ default:
             break;
     }
+
 
     // explains
     return mode;
