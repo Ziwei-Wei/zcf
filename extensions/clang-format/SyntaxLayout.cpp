@@ -480,23 +480,20 @@ void wrapPackIndexedFunctionBrace(AnnotatedLine &Line,
   }
 }
 
-void countStatementSemicolonsOnPhysicalLines(const AnnotatedLine &Line,
-                                             unsigned &CurrentLineCount,
-                                             unsigned &MaximumLineCount) {
+// Counts statements regardless of how the input wraps them, so the decision
+// does not change after LibFormat merges or splits short lines.
+unsigned countStatementSemicolons(const AnnotatedLine &Line) {
+  unsigned Count = 0;
   const unsigned RootNesting = Line.First->NestingLevel;
   for (const auto *Token = Line.First; Token; Token = Token->Next) {
-    if (Token->HasUnescapedNewline)
-      CurrentLineCount = 0;
-    if (Token->is(tok::semi) && Token->NestingLevel == RootNesting) {
-      ++CurrentLineCount;
-      MaximumLineCount = std::max(MaximumLineCount, CurrentLineCount);
-    }
+    if (Token->is(tok::semi) && Token->NestingLevel == RootNesting)
+      ++Count;
     for (const AnnotatedLine *Child : Token->Children) {
       if (Child)
-        countStatementSemicolonsOnPhysicalLines(*Child, CurrentLineCount,
-                                                MaximumLineCount);
+        Count += countStatementSemicolons(*Child);
     }
   }
+  return Count;
 }
 
 FormatToken *findLambdaBodyBrace(FormatToken &LeftParen) {
@@ -527,28 +524,33 @@ const FormatToken *findLambdaCapture(const FormatToken &LeftParen) {
   return CaptureClose->MatchingParen;
 }
 
+// With ColumnLimit: 0 LibFormat keeps an author break after `(` and may then
+// break before `)` itself, so that break alone marks an expanded header;
+// otherwise the second run would see an expansion the first run did not.
 bool isAuthorExpandedLambda(const FormatToken &LeftParen,
-                            const FormatToken &BodyBrace) {
-  return LeftParen.Next && LeftParen.MatchingParen &&
-         LeftParen.Next->NewlinesBefore > 0 &&
-         LeftParen.MatchingParen->NewlinesBefore > 0 &&
-         BodyBrace.NewlinesBefore > 0;
+                            const FormatToken &BodyBrace,
+                            const FormatStyle &FormatStyle) {
+  if (!LeftParen.Next || !LeftParen.MatchingParen ||
+      LeftParen.Next->NewlinesBefore == 0) {
+    return false;
+  }
+  return FormatStyle.ColumnLimit == 0 ||
+         (LeftParen.MatchingParen->NewlinesBefore > 0 &&
+          BodyBrace.NewlinesBefore > 0);
 }
 
 bool lambdaNeedsExpansion(const FormatToken &LeftParen,
                           const FormatToken &BodyBrace,
                           const FormatStyle &FormatStyle, unsigned BaseIndent) {
-  if (isAuthorExpandedLambda(LeftParen, BodyBrace))
+  if (isAuthorExpandedLambda(LeftParen, BodyBrace, FormatStyle))
     return true;
 
-  unsigned CurrentLineSemicolons = 0;
-  unsigned MaximumLineSemicolons = 0;
+  unsigned Statements = 0;
   for (const AnnotatedLine *Child : BodyBrace.Children) {
     if (Child)
-      countStatementSemicolonsOnPhysicalLines(*Child, CurrentLineSemicolons,
-                                              MaximumLineSemicolons);
+      Statements += countStatementSemicolons(*Child);
   }
-  if (MaximumLineSemicolons > 1)
+  if (Statements > 1)
     return true;
   if (FormatStyle.ColumnLimit == 0 || !BodyBrace.MatchingParen)
     return false;
@@ -588,7 +590,7 @@ void expandBodyDrivenLambdas(AnnotatedLine &Line,
          BaseIndent + *HeaderWidth + BodyBrace->SpacesRequiredBefore +
                  BodyBrace->ColumnWidth <=
              FormatStyle.ColumnLimit);
-    if (!HeaderFits || isAuthorExpandedLambda(*Token, *BodyBrace)) {
+    if (!HeaderFits || isAuthorExpandedLambda(*Token, *BodyBrace, FormatStyle)) {
       forceMultilineList(*Token);
       forceBreakBefore(*BodyBrace);
     }
@@ -1008,7 +1010,8 @@ void expandArithmeticExpression(AnnotatedLine &Line,
   const auto FullLineWidth = getFlatWidth(*Line.First, *ExpressionEnd);
   const bool FullLineOverflows =
       FullLineWidth &&
-      Line.First->OriginalColumn + *FullLineWidth > FormatStyle.ColumnLimit;
+      Line.Level * FormatStyle.IndentWidth + *FullLineWidth >
+          FormatStyle.ColumnLimit;
   // Only breaks the author placed around arithmetic operators make the
   // expression multi-line; breaks between call arguments belong to calls.
   bool IsMultiline = ExpressionBegin->NewlinesBefore > 0;

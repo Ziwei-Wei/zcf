@@ -47,7 +47,9 @@ bool isNamedParen(const FormatToken &LeftParen) {
                                TT_TemplateCloser);
 }
 
-void compactCallIfItFits(FormatToken &LeftParen,
+// Widths are measured from the formatted line start, not from input columns,
+// so the decision does not change when a later run re-indents the line.
+void compactCallIfItFits(const AnnotatedLine &Line, FormatToken &LeftParen,
                          const FormatStyle &FormatStyle) {
   if (FormatStyle.ColumnLimit == 0 || !LeftParen.MatchingParen ||
       !LeftParen.Next || LeftParen.Next == LeftParen.MatchingParen ||
@@ -55,14 +57,18 @@ void compactCallIfItFits(FormatToken &LeftParen,
     return;
 
   bool HasNewline = false;
-  unsigned Width = LeftParen.Previous->OriginalColumn +
-                   LeftParen.Previous->ColumnWidth + LeftParen.ColumnWidth;
-  for (auto *Token = LeftParen.Next; Token; Token = Token->Next) {
+  bool InCall = false;
+  unsigned Width = Line.Level * FormatStyle.IndentWidth;
+  for (auto *Token = Line.First; Token; Token = Token->Next) {
     if (Token->is(tok::comment) || Token->IsMultiline ||
         !Token->Children.empty())
       return;
-    HasNewline |= Token->NewlinesBefore > 0;
-    Width += Token->SpacesRequiredBefore + Token->ColumnWidth;
+    if (Token != Line.First)
+      Width += Token->SpacesRequiredBefore;
+    Width += Token->ColumnWidth;
+    HasNewline |= InCall && Token->NewlinesBefore > 0;
+    if (Token == &LeftParen)
+      InCall = true;
     if (Token == LeftParen.MatchingParen)
       break;
   }
@@ -93,14 +99,20 @@ void customizeAnnotatedLine(AnnotatedLine &Line,
 
   for (auto *Token = Line.First; Token; Token = Token->Next) {
     // A declaration-like line can still contain a call, but its own parameter
-    // list is not one.
+    // list is not one. AlignArrayOfStructures owns the breaks of an
+    // array-of-structures line; compacting would undo them on a second run.
     if (Style->ProgressiveCallExpansion && isCallParen(Line, *Token) &&
-        !(Line.MightBeFunctionDecl && Token->MightBeFunctionDeclParen)) {
-      compactCallIfItFits(*Token, FormatStyle);
+        !(Line.MightBeFunctionDecl && Token->MightBeFunctionDeclParen) &&
+        Line.Type != LT_ArrayOfStructInitializer) {
+      compactCallIfItFits(Line, *Token, FormatStyle);
     }
     if (Style->ForceMultilineFunctionSignatures &&
         isFunctionSignatureParen(Line, *Token)) {
       forceMultilineList(*Token);
+      // A short body must not merge onto the closing parenthesis on this run
+      // and stay separate on the next one.
+      if (Line.Last->is(TT_FunctionLBrace))
+        addForcedBreakLength(*Token->Next, FormatStyle);
     }
   }
   customizeSyntaxLayout(Line, FormatStyle);
@@ -181,6 +193,38 @@ bool extensionNeedsReformat(const Environment &Env, const FormatStyle &Style) {
            Line.LastNonCommentToken &&
            Line.Tokens.back() != *Line.LastNonCommentToken;
   };
+  // A blank line inserted after LibFormat aligned trailing comments leaves
+  // them aligned across a gap wider than OverEmptyLines, which LibFormat does
+  // not produce; reformatting realigns them now instead of on the next run.
+  const unsigned TabWidth = std::max(Style.TabWidth, 1u);
+  auto CommentColumn = [&](const PhysicalLine &Line) {
+    return measureColumn(
+        Source.Code.slice(Line.StartOffset, Tokens[Line.Tokens.back()].Offset),
+        TabWidth);
+  };
+  auto IsPadded = [&](const PhysicalLine &Line) {
+    return Tokens[Line.Tokens.back()].Offset -
+               Tokens[*Line.LastNonCommentToken].EndOffset >
+           1;
+  };
+  for (size_t LineIndex = 1; LineIndex < Lines.size(); ++LineIndex) {
+    const PhysicalLine &Line = Lines[LineIndex];
+    if (!HasTrailingComment(Line))
+      continue;
+    const unsigned PreviousIndex = previousNonBlankLine(Lines, LineIndex);
+    if (PreviousIndex >= Lines.size() ||
+        LineIndex - PreviousIndex - 1 <=
+            Style.AlignTrailingComments.OverEmptyLines) {
+      continue;
+    }
+    const PhysicalLine &Previous = Lines[PreviousIndex];
+    if (HasTrailingComment(Previous) &&
+        CommentColumn(Previous) == CommentColumn(Line) &&
+        (IsPadded(Previous) || IsPadded(Line))) {
+      return true;
+    }
+  }
+
   for (size_t LineIndex = 0; LineIndex < Lines.size(); ++LineIndex) {
     const PhysicalLine &Line = Lines[LineIndex];
     // Alignment only differs when an adjacent line also has a trailing

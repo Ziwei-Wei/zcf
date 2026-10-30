@@ -99,11 +99,12 @@ public:
   DefinitionSeparator(const PostFormatSource &Source,
                       const std::unordered_map<unsigned, TokenFacts> &Facts,
                       const ExtensionStyle &Extensions, bool BeforeFormatting,
-                      AffectedRangeManager &AffectedRangeMgr,
+                      unsigned TabWidth, AffectedRangeManager &AffectedRangeMgr,
                       std::vector<PendingReplacement> &Pending)
       : Source(Source), Tokens(Source.Tokens), Facts(Facts),
         Extensions(Extensions), BeforeFormatting(BeforeFormatting),
-        AffectedRangeMgr(AffectedRangeMgr), Pending(Pending) {}
+        TabWidth(TabWidth), AffectedRangeMgr(AffectedRangeMgr),
+        Pending(Pending) {}
 
   void run() { separateScope(0, Tokens.size(), false); }
 
@@ -142,6 +143,13 @@ private:
       while (I < End && Tokens[I].Tok.is(tok::comment) &&
              Tokens[I].LineIndex == Tokens[Next.Last].LineIndex) {
         Next.Last = I++;
+      }
+      // So do the lines LibFormat wrapped that comment onto.
+      const unsigned Continued =
+          lastTrailingCommentContinuation(Source, Next.Last, TabWidth);
+      if (Continued > Next.Last && Continued < End) {
+        Next.Last = Continued;
+        I = Continued + 1;
       }
       Items.push_back(Next);
     }
@@ -442,6 +450,7 @@ private:
   // Lambda layout is unknown before formatting, so lambdas are left to the
   // post-format pass.
   const bool BeforeFormatting;
+  const unsigned TabWidth;
   AffectedRangeManager &AffectedRangeMgr;
   std::vector<PendingReplacement> &Pending;
 };
@@ -458,7 +467,7 @@ void collectDefinitionSeparationFixes(const Environment &Env,
   std::unordered_map<unsigned, TokenFacts> Facts;
   TokenFactCollector(Env, Style, Facts).process();
   DefinitionSeparator(Source, Facts, Extensions, BeforeFormatting,
-                      AffectedRangeMgr, Pending)
+                      std::max(Style.TabWidth, 1u), AffectedRangeMgr, Pending)
       .run();
 }
 

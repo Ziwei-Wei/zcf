@@ -325,6 +325,31 @@ void queueSingleBlankLine(std::vector<PendingReplacement> &Pending,
                    Context);
 }
 
+unsigned lastTrailingCommentContinuation(const PostFormatSource &Source,
+                                         unsigned Index, unsigned TabWidth) {
+  const auto &Tokens = Source.Tokens;
+  const auto &Lines = Source.Lines;
+  auto IsLineComment = [&](unsigned I) {
+    return Tokens[I].Tok.is(tok::comment) && Tokens[I].Text.starts_with("//");
+  };
+  auto Column = [&](unsigned I) {
+    return measureColumn(Source.Code.slice(Lines[Tokens[I].LineIndex].StartOffset,
+                                           Tokens[I].Offset),
+                         TabWidth);
+  };
+  if (!IsLineComment(Index) || Lines[Tokens[Index].LineIndex].CommentOnly)
+    return Index;
+  const unsigned CommentColumn = Column(Index);
+  unsigned Last = Index;
+  while (Last + 1 < Tokens.size() && IsLineComment(Last + 1) &&
+         Lines[Tokens[Last + 1].LineIndex].CommentOnly &&
+         Tokens[Last + 1].LineIndex == Tokens[Last].LineIndex + 1 &&
+         Column(Last + 1) == CommentColumn) {
+    ++Last;
+  }
+  return Last;
+}
+
 unsigned measureColumn(StringRef Text, unsigned TabWidth) {
   unsigned Column = 0;
   for (char C : Text) {
