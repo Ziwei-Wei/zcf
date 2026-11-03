@@ -223,6 +223,12 @@ $regressionContracts = [ordered]@{
         '{BasedOnStyle: LLVM, AlignConsecutiveMacros: {Enabled: true, AcrossEmptyLines: true}, ZCFExtensions: {AlignMacrosAcrossDirectives: true, SeparatePreprocessorConditionalBlocks: true}}'
     'operator-signature-layout' =
         '{BasedOnStyle: LLVM, ZCFExtensions: {ForceMultilineFunctionSignatures: true, ArgumentIndentedClosingParentheses: true}}'
+    # Reduced from instabilities found by tests/validate_corpus_invariants.py.
+    'second-run-stability-preset' = '{BasedOnStyle: ZCF}'
+    'second-run-stability-llvm' =
+        '{BasedOnStyle: LLVM, ZCFExtensions: {ForceMultilineFunctionSignatures: true, SeparatePreprocessorConditionalBlocks: true, BlankLinesAroundControlStatements: true}}'
+    'second-run-stability-tabs' =
+        '{BasedOnStyle: ZCF, UseTab: ForIndentation, TabWidth: 4, ColumnLimit: 0}'
     'requires-clause-signature-indent' =
         '{BasedOnStyle: LLVM, ZCFExtensions: {ForceMultilineFunctionSignatures: true, BreakRequiresExpressionBraces: true}}'
     'qualified-signature-parameters' =

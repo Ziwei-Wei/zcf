@@ -132,6 +132,11 @@ void queueSingleBlankLine(std::vector<PendingReplacement> &Pending,
                           unsigned EndOffset, StringRef DefaultLineEnding,
                           StringRef Context);
 unsigned measureColumn(StringRef Text, unsigned TabWidth);
+// LibFormat continues a long trailing `//` comment on the following lines at
+// the same column. Returns the last token of that continuation, or Index when
+// the comment at Index is not a continued trailing comment.
+unsigned lastTrailingCommentContinuation(const PostFormatSource &Source,
+                                         unsigned Index, unsigned TabWidth);
 // Extends BaseIndent by Columns, emitting tabs when the style's UseTab setting
 // allows them.
 std::string buildIndentText(StringRef BaseIndent, unsigned Columns,

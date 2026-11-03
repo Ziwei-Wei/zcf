@@ -231,6 +231,28 @@ A follow-up audit fixed the remaining issues:
   neighboring line also has a trailing comment, the only case where alignment
   differs.
 
+Formatting a sample of 600 files from the pinned LLVM sources with three styles
+(`tests/validate_corpus_invariants.py`) found extension output that changed on
+a second run. All were fixed, each with a reduced `second-run-stability-*`
+regression contract:
+
+- `ProgressiveCallExpansion` cleared the breaks `AlignArrayOfStructures` forces
+  in an array-of-structures call argument; it now leaves such lines alone.
+- `ProgressiveCallExpansion` and `ProgressiveArithmeticExpansion` judged width
+  from input columns, which change after re-indentation; they now measure from
+  the formatted indentation.
+- `ForceMultilineFunctionSignatures` broke a definition's parameters after
+  LibFormat had decided to merge its short body; the body now stays separate.
+- `BodyDrivenLambdaExpansion` counted statements per input line, so a body
+  LibFormat merged onto one line expanded on the next run; it now counts
+  statements in the body. With `ColumnLimit: 0`, an author break after the
+  lambda's `(` counts as an expanded header, as it does on the next run.
+- `SeparatePreprocessorConditionalBlocks` separated a long `#endif` comment
+  from the line LibFormat wrapped it onto; wrapped trailing comments now stay
+  with their line.
+- Blank lines inserted after LibFormat aligned trailing comments left them
+  aligned across the blank line; zcf now repeats formatting once in that case.
+
 Known upstream LLVM 20 behavior that zcf does not change:
 
 - `a < b, c > d` inside a braced list is parsed as a template argument list.
