@@ -467,5 +467,15 @@ else()
   message(WARNING "PowerShell was not found; compare-format target will not be available.")
 endif()
 
+# Opt-in: formats a fixed sample of the pinned LLVM sources (several minutes).
+add_custom_target(validate-corpus-invariants
+  COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/validate_corpus_invariants.py"
+    --formatter "${_zcf_exe}"
+    --llvm-source "${LLVM_PROJECT_SOURCE_DIR}"
+    --report "${CMAKE_BINARY_DIR}/corpus-invariants/report.json"
+  DEPENDS zcf
+  USES_TERMINAL)
+
 add_custom_target(print-output-path
   COMMAND ${CMAKE_COMMAND} -E echo "${_zcf_exe}")
