@@ -1,0 +1,24 @@
+From a5658809ac4adba9debb75f31e2402937615f48c
+Subject: [clang-format] Fix a crash in AlignArrayOfStructures (#167099)
+
+Verbatim upstream fix from llvm/llvm-project, cherry-picked to the LLVM 21
+release branch from 836919bb34493333767fc1734e402d3ebf989acb. Fixes
+llvm/llvm-project#157405: AlignArrayOfStructures dereferenced past a #define
+inside an array initializer. Remove when the pinned LLVM includes it.
+---
+diff --git a/clang/lib/Format/WhitespaceManager.cpp b/clang/lib/Format/WhitespaceManager.cpp
+index cc3cc0f6906ccd..ecc696c539226a 100644
+--- a/clang/lib/Format/WhitespaceManager.cpp
++++ b/clang/lib/Format/WhitespaceManager.cpp
+@@ -1295,7 +1295,10 @@ void WhitespaceManager::alignArrayInitializers() {
+       bool FoundComplete = false;
+       for (unsigned InsideIndex = ChangeIndex + 1; InsideIndex < ChangeEnd;
+            ++InsideIndex) {
+-        if (Changes[InsideIndex].Tok == C.Tok->MatchingParen) {
++        const auto *Tok = Changes[InsideIndex].Tok;
++        if (Tok->is(tok::pp_define))
++          break;
++        if (Tok == C.Tok->MatchingParen) {
+           alignArrayInitializers(ChangeIndex, InsideIndex + 1);
+           ChangeIndex = InsideIndex + 1;
+           FoundComplete = true;

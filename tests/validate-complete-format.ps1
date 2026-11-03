@@ -223,6 +223,8 @@ $regressionContracts = [ordered]@{
         '{BasedOnStyle: LLVM, AlignConsecutiveMacros: {Enabled: true, AcrossEmptyLines: true}, ZCFExtensions: {AlignMacrosAcrossDirectives: true, SeparatePreprocessorConditionalBlocks: true}}'
     'operator-signature-layout' =
         '{BasedOnStyle: LLVM, ZCFExtensions: {ForceMultilineFunctionSignatures: true, ArgumentIndentedClosingParentheses: true}}'
+    # Upstream crash fixed by integration/backports (llvm/llvm-project#167099).
+    'array-of-structures-define-crash' = '{BasedOnStyle: ZCF}'
     # Reduced from instabilities found by tests/validate_corpus_invariants.py.
     'second-run-stability-preset' = '{BasedOnStyle: ZCF}'
     'second-run-stability-llvm' =
