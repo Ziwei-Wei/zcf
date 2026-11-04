@@ -253,6 +253,22 @@ regression contract:
 - Blank lines inserted after LibFormat aligned trailing comments left them
   aligned across the blank line; zcf now repeats formatting once in that case.
 
+Repeating the corpus inputs with eleven base styles, CRLF line endings, and
+`-lines` ranges found further differences, each fixed with a regression check:
+
+- Blank-line rules edited lines outside a `-lines` range. As with upstream
+  `SeparateDefinitionBlocks`, a blank line is now inserted only before a line
+  inside the range, and the edit no longer touches the preceding line.
+- An attributed-label indent and a blank line inserted at the same offset
+  conflicted; the two insertions are now merged.
+- `SeparateClosingDirectiveComments` moved an `#endif` comment to a new column
+  but left its wrapped continuation lines behind; they now move with it.
+- `ForceMultilineFunctionSignatures` expanded a line-leading all-caps macro
+  call such as `ALIGNAS_TYPE(T) char buffer[N];`, which LibFormat parses as a
+  statement of its own once a break follows it. Such calls are no longer
+  expanded, and when LibFormat breaks after one, zcf repeats formatting so the
+  declaration that follows is expanded in the same run.
+
 ### Upstream backports
 
 `integration/backports/` holds verbatim upstream LLVM fixes for the pinned

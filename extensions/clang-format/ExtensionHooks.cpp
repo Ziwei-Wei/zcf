@@ -29,9 +29,35 @@ bool isFunctionParameterParen(const FormatToken &LeftParen) {
          isNonEmptyParen(LeftParen);
 }
 
+// Mirrors UnwrappedLineParser's test for a line-leading all-caps macro call
+// that becomes a statement of its own once a line break follows it, such as
+// `ALIGNAS_TYPE(T) char buffer[N];`. Breaking its parentheses would change how
+// the next run parses the line. A constructor of an all-caps class is not
+// affected: `;`, `{`, `:`, `=`, and `noexcept` cannot start a new line.
+bool isLineLeadingMacroCall(const AnnotatedLine &Line,
+                            const FormatToken &LeftParen) {
+  const auto *Name = LeftParen.Previous;
+  if (!Name || Name != Line.First || Name->isNot(tok::identifier) ||
+      !LeftParen.MatchingParen) {
+    return false;
+  }
+  const StringRef Text = Name->TokenText;
+  const auto *Next = LeftParen.MatchingParen->getNextNonComment();
+  return Text == Text.upper() && Next && Next->isNot(tok::l_paren) &&
+         !Next->isOneOf(tok::semi, tok::l_brace, tok::period, tok::periodstar,
+                        tok::arrow, tok::arrowstar, tok::less, tok::greater,
+                        tok::slash, tok::percent, tok::lessless,
+                        tok::greatergreater, tok::equal, tok::plusequal,
+                        tok::minusequal, tok::starequal, tok::slashequal,
+                        tok::percentequal, tok::ampequal, tok::pipeequal,
+                        tok::caretequal, tok::greatergreaterequal,
+                        tok::lesslessequal, tok::colon, tok::kw_noexcept);
+}
+
 bool isFunctionSignatureParen(const AnnotatedLine &Line,
                               const FormatToken &LeftParen) {
-  return Line.MightBeFunctionDecl && isFunctionParameterParen(LeftParen);
+  return Line.MightBeFunctionDecl && isFunctionParameterParen(LeftParen) &&
+         !isLineLeadingMacroCall(Line, LeftParen);
 }
 
 bool isNamedParen(const FormatToken &LeftParen) {
@@ -181,13 +207,48 @@ bool extensionNeedsReformat(const Environment &Env, const FormatStyle &Style) {
   const auto *Extensions = getActiveExtensionStyleConst();
   if (!Extensions || !Extensions->anyEnabled() ||
       Style.Language != FormatStyle::LK_Cpp ||
-      Style.AlignTrailingComments.Kind != FormatStyle::TCAS_Always) {
+      (Style.AlignTrailingComments.Kind != FormatStyle::TCAS_Always &&
+       !Extensions->ForceMultilineFunctionSignatures)) {
     return false;
   }
 
   const PostFormatSource Source = scanPostFormatSource(Env, Style);
   const auto &Tokens = Source.Tokens;
   const auto &Lines = Source.Lines;
+  // LibFormat annotates only the first declaration on a line, so in
+  // `MACRO(x) int f(int);` the declaration parentheses go unrecognized. Once a
+  // break follows the leading macro call, the next run parses `int f(int);` as
+  // its own declaration; reformatting reparses it now.
+  if (Extensions->ForceMultilineFunctionSignatures) {
+    for (size_t LineIndex = 0; LineIndex + 1 < Lines.size(); ++LineIndex) {
+      const PhysicalLine &Line = Lines[LineIndex];
+      const PhysicalLine &Next = Lines[LineIndex + 1];
+      if (Line.Disabled || Line.InPPDirective || !Line.FirstNonCommentToken ||
+          Next.Disabled || Next.InPPDirective || !Next.FirstNonCommentToken) {
+        continue;
+      }
+      const unsigned Name = *Line.FirstNonCommentToken;
+      const StringRef Text = Tokens[Name].Text;
+      if (!Tokens[Name].Tok.isAnyIdentifier() ||
+          Text != Text.upper() || Name + 1 >= Tokens.size() ||
+          Tokens[Name + 1].Text != "(" ||
+          Tokens[Name + 1].LineIndex != LineIndex ||
+          Source.MatchingParens[Name + 1] !=
+              static_cast<int>(*Line.LastNonCommentToken)) {
+        continue;
+      }
+      const StringRef NextText = Tokens[*Next.FirstNonCommentToken].Text;
+      if (NextText == "{" || NextText == ";")
+        continue;
+      for (unsigned Index : Next.Tokens) {
+        if (Tokens[Index].Text == "(")
+          return true;
+      }
+    }
+  }
+  if (Style.AlignTrailingComments.Kind != FormatStyle::TCAS_Always)
+    return false;
+
   auto HasTrailingComment = [&](const PhysicalLine &Line) {
     return !Line.Disabled && !Line.InPPDirective && !Line.CommentOnly &&
            Line.LastNonCommentToken &&

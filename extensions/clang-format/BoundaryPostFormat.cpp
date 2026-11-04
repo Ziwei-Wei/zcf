@@ -103,9 +103,8 @@ void collectBlankLineAroundLabelFixes(
         !Lines[PrevLineIndex].Disabled) {
       const unsigned BeginOffset = Lines[PrevLineIndex].ContentEndOffset;
       const unsigned EndOffset = Tokens[*Line.FirstToken].Offset;
-      if (rangeAffected(AffectedRangeMgr, StartOfFile, BeginOffset, EndOffset,
-                        Tokens[*Line.FirstNonCommentToken].Offset,
-                        Tokens[*ColonIndex].EndOffset)) {
+      if (blankLineTargetAffected(AffectedRangeMgr, StartOfFile,
+                                  Tokens[*Line.FirstToken])) {
         queueSingleBlankLine(Pending, Code, BeginOffset, EndOffset,
                              DefaultLineEnding,
                              "BlankLinesAroundLabels(before)");
@@ -122,10 +121,8 @@ void collectBlankLineAroundLabelFixes(
 
     const unsigned BeginOffset = Line.ContentEndOffset;
     const unsigned EndOffset = Tokens[*Lines[NextLineIndex].FirstToken].Offset;
-    if (!rangeAffected(
-            AffectedRangeMgr, StartOfFile, BeginOffset, EndOffset,
-            Tokens[*Lines[NextLineIndex].FirstNonCommentToken].Offset,
-            Tokens[*Lines[NextLineIndex].FirstNonCommentToken].EndOffset)) {
+    if (!blankLineTargetAffected(AffectedRangeMgr, StartOfFile,
+                                 Tokens[*Lines[NextLineIndex].FirstToken])) {
       continue;
     }
 
@@ -175,10 +172,13 @@ void collectAttributedLabelIndentFixes(
 }
 
 void collectClosingDirectiveCommentFixes(
-    const std::vector<TokenInfo> &, const std::vector<PhysicalLine> &Lines,
-    AffectedRangeManager &AffectedRangeMgr, SourceLocation StartOfFile,
-    StringRef Code, std::vector<PendingReplacement> &Pending) {
-  for (const PhysicalLine &Line : Lines) {
+    const PostFormatSource &Source, unsigned TabWidth,
+    AffectedRangeManager &AffectedRangeMgr,
+    std::vector<PendingReplacement> &Pending) {
+  const auto &Tokens = Source.Tokens;
+  const StringRef Code = Source.Code;
+  const SourceLocation StartOfFile = Source.StartOfFile;
+  for (const PhysicalLine &Line : Source.Lines) {
     if (Line.BlankText || Line.CommentOnly || !Line.InPPDirective ||
         Line.Disabled) {
       continue;
@@ -225,6 +225,19 @@ void collectClosingDirectiveCommentFixes(
 
     queueReplacement(Pending, Code, BeginOffset, EndOffset, " ",
                      "SeparateClosingDirectiveComments");
+
+    // Lines LibFormat wrapped the comment onto move with it.
+    const unsigned CommentToken = Line.Tokens.back();
+    const unsigned NewColumn =
+        measureColumn(Text.take_front(DirectiveEnd), TabWidth) + 1;
+    const unsigned LastContinuation =
+        lastTrailingCommentContinuation(Source, CommentToken, TabWidth);
+    for (unsigned Index = CommentToken + 1; Index <= LastContinuation; ++Index) {
+      const PhysicalLine &Continuation = Source.Lines[Tokens[Index].LineIndex];
+      queueReplacement(Pending, Code, Continuation.StartOffset,
+                       Tokens[Index].Offset, std::string(NewColumn, ' '),
+                       "SeparateClosingDirectiveComments");
+    }
   }
 }
 
@@ -418,8 +431,8 @@ void collectBoundaryFixes(const PostFormatSource &Source,
                                       Style, Pending);
   }
   if (Extensions.SeparateClosingDirectiveComments) {
-    collectClosingDirectiveCommentFixes(Tokens, Lines, AffectedRangeMgr,
-                                        StartOfFile, Code, Pending);
+    collectClosingDirectiveCommentFixes(Source, std::max(Style.TabWidth, 1u),
+                                        AffectedRangeMgr, Pending);
   }
   if (Extensions.DeindentQualifiedFunctionNames) {
     collectQualifiedFunctionNameDeindentFixes(
