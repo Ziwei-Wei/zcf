@@ -123,6 +123,12 @@ void queueReplacement(std::vector<PendingReplacement> &Pending, StringRef Code,
                       unsigned BeginOffset, unsigned EndOffset,
                       std::string Text, StringRef Context);
 
+// Whether a blank line may be inserted before Token. As in upstream
+// DefinitionBlockSeparator, the line that receives the blank line must itself
+// be in the formatted range; a gap that merely touches the range would pull a
+// statement outside it into formatting.
+bool blankLineTargetAffected(AffectedRangeManager &AffectedRangeMgr,
+                             SourceLocation StartOfFile, const TokenInfo &Token);
 // Rewrites the whitespace in [BeginOffset, EndOffset) to exactly one blank
 // line, keeping the following line's indentation and the file's line endings.
 // Extra blank lines collapse even when MaxEmptyLinesToKeep allows more. Ranges

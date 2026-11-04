@@ -199,9 +199,31 @@ buildReplacements(const std::vector<PendingReplacement> &Pending,
         return Left.Context < Right.Context;
       });
 
+  // Insertions at one offset, such as a blank line and the indentation of the
+  // line after it, are combined; line breaks come first.
+  auto IsLineBreak = [](const PendingReplacement &Replacement) {
+    return StringRef(Replacement.Text).contains('\n');
+  };
+  std::vector<PendingReplacement> Combined;
+  for (const PendingReplacement &Current : Sorted) {
+    if (!Combined.empty()) {
+      PendingReplacement &Last = Combined.back();
+      if (Last.BeginOffset == Last.EndOffset &&
+          Current.BeginOffset == Current.EndOffset &&
+          Last.BeginOffset == Current.BeginOffset && Last.Text != Current.Text) {
+        const bool CurrentFirst = !IsLineBreak(Last) && IsLineBreak(Current);
+        Last.Text = CurrentFirst ? Current.Text + Last.Text
+                                 : Last.Text + Current.Text;
+        Last.Context += "+" + Current.Context;
+        continue;
+      }
+    }
+    Combined.push_back(Current);
+  }
+
   tooling::Replacements Result;
   std::optional<PendingReplacement> Previous;
-  for (const PendingReplacement &Current : Sorted) {
+  for (const PendingReplacement &Current : Combined) {
     if (Previous) {
       if (Current.BeginOffset == Previous->BeginOffset &&
           Current.EndOffset == Previous->EndOffset &&
@@ -298,6 +320,13 @@ bool rangeAffected(AffectedRangeManager &AffectedRangeMgr,
       StartOfFile.getLocWithOffset(FallbackEndOffset)));
 }
 
+bool blankLineTargetAffected(AffectedRangeManager &AffectedRangeMgr,
+                             SourceLocation StartOfFile,
+                             const TokenInfo &Token) {
+  return rangeAffected(AffectedRangeMgr, StartOfFile, Token.Offset,
+                       Token.EndOffset, Token.Offset, Token.EndOffset);
+}
+
 void queueReplacement(std::vector<PendingReplacement> &Pending, StringRef Code,
                       unsigned BeginOffset, unsigned EndOffset,
                       std::string Text, StringRef Context) {
@@ -320,8 +349,19 @@ void queueSingleBlankLine(std::vector<PendingReplacement> &Pending,
     return;
   const std::string LineEnding =
       (Existing.contains("\r\n") ? StringRef("\r\n") : DefaultLineEnding).str();
-  queueReplacement(Pending, Code, BeginOffset, EndOffset,
-                   LineEnding + LineEnding + getIndentSuffix(Existing).str(),
+  // Keep the first line break and edit only after it, so the edit does not
+  // touch the preceding line. LibFormat extends its formatted ranges by every
+  // edit, and an edit adjacent to that line would pull it into formatting.
+  const size_t FirstBreak = Existing.find('\n');
+  if (FirstBreak == StringRef::npos) {
+    queueReplacement(Pending, Code, BeginOffset, EndOffset,
+                     LineEnding + LineEnding + getIndentSuffix(Existing).str(),
+                     Context);
+    return;
+  }
+  queueReplacement(Pending, Code,
+                   BeginOffset + static_cast<unsigned>(FirstBreak) + 1,
+                   EndOffset, LineEnding + getIndentSuffix(Existing).str(),
                    Context);
 }
 

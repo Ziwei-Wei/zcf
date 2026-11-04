@@ -433,9 +433,7 @@ private:
     const TokenInfo &Previous = Tokens[Before];
     const TokenInfo &Next = Tokens[After];
     if (Previous.Disabled || Next.Disabled ||
-        !rangeAffected(AffectedRangeMgr, Source.StartOfFile,
-                       Previous.EndOffset, Next.Offset, Next.Offset,
-                       Next.EndOffset)) {
+        !blankLineTargetAffected(AffectedRangeMgr, Source.StartOfFile, Next)) {
       return;
     }
     queueSingleBlankLine(Pending, Source.Code, Previous.EndOffset, Next.Offset,

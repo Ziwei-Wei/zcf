@@ -227,6 +227,10 @@ $regressionContracts = [ordered]@{
     'second-run-stability-preset' = '{BasedOnStyle: ZCF}'
     'second-run-stability-llvm' =
         '{BasedOnStyle: LLVM, ZCFExtensions: {ForceMultilineFunctionSignatures: true, SeparatePreprocessorConditionalBlocks: true, BlankLinesAroundControlStatements: true}}'
+    'closing-directive-comment-continuation' =
+        '{BasedOnStyle: Google, ZCFExtensions: {SeparateClosingDirectiveComments: true, SeparatePreprocessorConditionalBlocks: true}}'
+    'macro-call-signature-line' =
+        '{BasedOnStyle: WebKit, ZCFExtensions: {ForceMultilineFunctionSignatures: true}}'
     'second-run-stability-tabs' =
         '{BasedOnStyle: ZCF, UseTab: ForIndentation, TabWidth: 4, ColumnLimit: 0}'
     'requires-clause-signature-indent' =
@@ -1049,6 +1053,26 @@ if (-not $topLevelQualifiedCallText.Contains("    foo::") -or
     throw 'Qualified function-name policy deindented a top-level call.'
 }
 Write-Host 'PASS top-level qualified-call isolation'
+
+# Blank-line rules may only edit lines in the requested range, as upstream
+# SeparateDefinitionBlocks does; neighboring statements stay byte-identical.
+$partialInput = Join-Path $WorkDir 'partial-range.cpp'
+[System.IO.File]::WriteAllText(
+    $partialInput,
+    "int  before( int a ) ;`nstruct Shape { int value; };`nint  after( int b ) ;`n",
+    [System.Text.UTF8Encoding]::new($false)
+)
+$partialOutput = (& $FormatterExe `
+    '-style={BasedOnStyle: LLVM, ZCFExtensions: {SeparateDefinitionBlocksFromAll: true}}' `
+    -lines=2:2 $partialInput) -join "`n"
+if ($LASTEXITCODE -ne 0) {
+    throw "Partial-range formatting failed with exit code $LASTEXITCODE."
+}
+$partialExpected = "int  before( int a ) ;`n`nstruct Shape {`n  int value;`n};`nint  after( int b ) ;"
+if ($partialOutput -cne $partialExpected) {
+    throw 'Blank-line separation changed lines outside the -lines range.'
+}
+Write-Host 'PASS partial-range blank-line separation'
 
 $attributedLabelContextInput = Join-Path $WorkDir 'attributed-label-context.cpp'
 [System.IO.File]::WriteAllText(

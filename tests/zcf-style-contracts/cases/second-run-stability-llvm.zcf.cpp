@@ -4,9 +4,7 @@ bool Selector::lowerCall(
   return false;
 }
 struct Node {
-  ALIGNAS_TYPE(
-      Value
-      ) char buffer[sizeof(Value)];
+  ALIGNAS_TYPE(Value) char buffer[sizeof(Value)];
 };
 
 #if defined(__cplusplus) && __cplusplus < 201103L && defined(USE_FROZEN_HEADERS)

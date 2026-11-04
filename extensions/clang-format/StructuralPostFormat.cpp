@@ -214,10 +214,8 @@ void queueBlankLineBefore(const std::vector<TokenInfo> &Tokens,
   const TokenInfo &Token = Tokens[TokenIndex];
   const unsigned BeginOffset = Tokens[TokenIndex - 1].EndOffset;
   const unsigned EndOffset = Token.Offset;
-  if (!rangeAffected(AffectedRangeMgr, StartOfFile, BeginOffset, EndOffset,
-                     Token.Offset, Token.EndOffset)) {
+  if (!blankLineTargetAffected(AffectedRangeMgr, StartOfFile, Token))
     return;
-  }
   queueSingleBlankLine(Pending, Code, BeginOffset, EndOffset, DefaultLineEnding,
                        Context);
 }
