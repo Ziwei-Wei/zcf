@@ -253,6 +253,20 @@ regression contract:
 - Blank lines inserted after LibFormat aligned trailing comments left them
   aligned across the blank line; zcf now repeats formatting once in that case.
 
+### Upstream backports
+
+`integration/backports/` holds verbatim upstream LLVM fixes for the pinned
+20.1.8 release, applied to the generated overlay after the behavior-free
+bridge patch. Formatting policy never goes there. Each backport names its
+upstream commit and should be removed when the pinned LLVM includes it.
+
+- `0001-align-array-of-structures-pp-define-crash.patch`
+  (llvm/llvm-project#167099, released in 21.1): `AlignArrayOfStructures`
+  crashed on a `#define` inside an array initializer. The ZCF preset's
+  `AlignArrayOfStructures: Right` with `BinPackArguments: false` reached it on
+  real code such as `clang/lib/AST/ASTTypeTraits.cpp`. Regression contract
+  `array-of-structures-define-crash`.
+
 Known upstream LLVM 20 behavior that zcf does not change:
 
 - `a < b, c > d` inside a braced list is parsed as a template argument list.
