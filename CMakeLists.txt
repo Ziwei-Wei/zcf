@@ -152,6 +152,8 @@ add_custom_target(generate-zcf-preset
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/generate-zcf-preset.cmake"
   VERBATIM)
 
+file(GLOB _zcf_backport_patches CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/integration/backports/*.patch")
 add_custom_target(prepare-llvm-overlay
   COMMAND "${Python3_EXECUTABLE}"
     "${CMAKE_CURRENT_SOURCE_DIR}/scripts/prepare_llvm_overlay.py"
@@ -160,6 +162,7 @@ add_custom_target(prepare-llvm-overlay
   DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/scripts/prepare_llvm_overlay.py"
     "${CMAKE_CURRENT_SOURCE_DIR}/integration/patches/0001-custom-format-extension-bridge.patch"
+    ${_zcf_backport_patches}
   USES_TERMINAL)
 
 foreach(_required_path

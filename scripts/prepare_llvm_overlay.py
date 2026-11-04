@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -56,6 +57,12 @@ def parse_arguments() -> argparse.Namespace:
         default=repo_root / "integration" / "patches",
     )
     parser.add_argument(
+        "--backport-dir",
+        type=Path,
+        default=repo_root / "integration" / "backports",
+        help="Verbatim upstream LLVM fixes applied after the bridge patch.",
+    )
+    parser.add_argument(
         "--metadata-file",
         type=Path,
         default=repo_root / "build" / "llvm-overlay-metadata.json",
@@ -69,6 +76,7 @@ def overlay_is_current(
     upstream_commit: str,
     patch_set_hash: str,
     patches: list[Path],
+    expected_diff: bytes,
 ) -> bool:
     if not overlay_dir.is_dir() or not metadata_file.is_file():
         return False
@@ -82,7 +90,7 @@ def overlay_is_current(
     if run_git(overlay_dir, "rev-parse", "HEAD")[-1].strip() != upstream_commit:
         return False
 
-    for patch in patches:
+    for patch in reversed(patches):
         completed = subprocess.run(
             [
                 "git",
@@ -116,9 +124,51 @@ def overlay_is_current(
             "--dst-prefix=b/",
             f"--output={current_diff}",
         )
-        return sha256(current_diff) == sha256(patches[0])
+        return current_diff.read_bytes() == expected_diff
     finally:
         current_diff.unlink(missing_ok=True)
+
+
+def expected_overlay_diff(
+    llvm_source: Path, upstream_commit: str, patches: list[Path]
+) -> bytes:
+    """The overlay diff that applying every patch to a clean tree produces."""
+    if len(patches) == 1:
+        return patches[0].read_bytes()
+    index = Path(f"{llvm_source}.zcf-overlay.index")
+    environment = {**os.environ, "GIT_INDEX_FILE": str(index)}
+    try:
+        subprocess.run(
+            ["git", "-C", str(llvm_source), "read-tree", upstream_commit],
+            check=True,
+            env=environment,
+        )
+        for patch in patches:
+            # The index holds LF blobs; checkouts may have CRLF patches.
+            subprocess.run(
+                ["git", "-C", str(llvm_source), "apply", "--cached", "-"],
+                input=patch.read_bytes().replace(b"\r\n", b"\n"),
+                check=True,
+                env=environment,
+            )
+        return subprocess.run(
+            [
+                "git",
+                "-C",
+                str(llvm_source),
+                "diff",
+                "--cached",
+                "--no-ext-diff",
+                "--src-prefix=a/",
+                "--dst-prefix=b/",
+                upstream_commit,
+            ],
+            check=True,
+            env=environment,
+            stdout=subprocess.PIPE,
+        ).stdout
+    finally:
+        index.unlink(missing_ok=True)
 
 
 def main() -> int:
@@ -126,6 +176,7 @@ def main() -> int:
     llvm_source = arguments.llvm_project_source_dir.resolve()
     overlay_dir = arguments.overlay_dir.resolve()
     patch_dir = arguments.patch_dir.resolve()
+    backport_dir = arguments.backport_dir.resolve()
     metadata_file = arguments.metadata_file.resolve()
 
     for required in (
@@ -139,11 +190,17 @@ def main() -> int:
             f"Overlay patch directory was not found: {patch_dir}"
         )
 
-    patches = sorted(patch_dir.glob("*.patch"))
-    if len(patches) != 1:
+    bridge_patches = sorted(patch_dir.glob("*.patch"))
+    if len(bridge_patches) != 1:
         raise RuntimeError(
-            f"Expected one policy-free bridge patch, found {len(patches)}."
+            f"Expected one policy-free bridge patch, found {len(bridge_patches)}."
         )
+    # Backports are verbatim upstream fixes for the pinned release; formatting
+    # policy belongs in the extension layer, never here.
+    backports = (
+        sorted(backport_dir.glob("*.patch")) if backport_dir.is_dir() else []
+    )
+    patches = bridge_patches + backports
 
     source_status = run_git(llvm_source, "status", "--porcelain")
     if source_status:
@@ -160,12 +217,14 @@ def main() -> int:
         "\n".join(patch_fingerprint).encode("utf-8")
     ).hexdigest()
 
+    expected_diff = expected_overlay_diff(llvm_source, upstream_commit, patches)
     if overlay_is_current(
         overlay_dir,
         metadata_file,
         upstream_commit,
         patch_set_hash,
         patches,
+        expected_diff,
     ):
         print(f"LLVM overlay is current: {overlay_dir}")
         return 0
