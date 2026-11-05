@@ -232,6 +232,20 @@ run, and may change only whitespace and integer-literal case. Problems that
 also occur with extensions disabled are reported as upstream and do not fail
 the check.
 
+Style variations (opt-in, under a minute):
+
+```text
+cmake --build build/release --target validate-format-variations
+```
+
+This formats every contract input with the ZCF preset at indent widths 2 and
+8, with tabs, with `ColumnLimit: 0` and 60, and with the LLVM, Google,
+Microsoft, and WebKit base styles plus every extension. Each variation runs
+with LF and CRLF input and with a `-lines` range over the middle third. On top
+of the real-code invariants, CRLF output must contain no bare LF, and
+extensions must not edit lines outside the range. Use `--variations` or
+`--files` to narrow a run.
+
 Python launcher and wheel tests:
 
 ```text

@@ -480,5 +480,15 @@ add_custom_target(validate-corpus-invariants
   DEPENDS zcf
   USES_TERMINAL)
 
+# Opt-in: formats the contract inputs with base-style, indentation, CRLF, and
+# -lines variations (under a minute).
+add_custom_target(validate-format-variations
+  COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/validate_format_variations.py"
+    --formatter "${_zcf_exe}"
+    --report "${CMAKE_BINARY_DIR}/format-variations/report.json"
+  DEPENDS zcf
+  USES_TERMINAL)
+
 add_custom_target(print-output-path
   COMMAND ${CMAKE_COMMAND} -E echo "${_zcf_exe}")
