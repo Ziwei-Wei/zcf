@@ -296,8 +296,10 @@ All code-review follow-ups are complete.
 
 ## Remaining release work
 
-1. Register the repository's `pypi` environment as a PyPI trusted publisher.
-2. Push tag `v0.1.0`.
+1. Register the repository's `wheels.yml` workflow and `pypi` environment as a
+   PyPI trusted publisher.
+2. Run the `Cross-platform wheels` workflow on `main` with **Publish** checked
+   (or push tag `v0.1.0`).
 3. Confirm public installation:
 
    ```text
