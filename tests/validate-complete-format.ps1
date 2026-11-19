@@ -243,6 +243,8 @@ $regressionContracts = [ordered]@{
     'qualified-return-type-break' = '{BasedOnStyle: ZCF}'
     'qualified-return-type-definitions-only' =
         '{BasedOnStyle: ZCF, BreakAfterReturnType: AllDefinitions}'
+    # Reduced from rdcore-workshop: compaction joined code onto #if/#else/#endif lines.
+    'call-arguments-across-directives' = '{BasedOnStyle: ZCF}'
 }
 foreach ($contract in $regressionContracts.GetEnumerator()) {
     $caseId = [string]$contract.Key
