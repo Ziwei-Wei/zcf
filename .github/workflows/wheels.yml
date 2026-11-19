@@ -8,6 +8,15 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (e.g. 0.1.1). Empty uses pyproject.toml."
+        required: false
+        default: ""
+      publish:
+        description: "Publish to PyPI and tag v<version> after all wheels pass (main only)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -63,6 +72,12 @@ jobs:
       - name: Install build tools
         shell: bash
         run: python -m pip install --disable-pip-version-check cmake ninja build "scikit-build-core>=1.1,<2" pipx
+
+      - name: Set package version
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: python scripts/release_version.py --version "$RELEASE_VERSION" --write
 
       - name: Configure zcf
         shell: bash
@@ -139,6 +154,12 @@ jobs:
             --disable-pip-version-check \
             cmake ninja build "scikit-build-core>=1.1,<2" pipx auditwheel
 
+      - name: Set package version
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: ${{ matrix.python }} scripts/release_version.py --version "$RELEASE_VERSION" --write
+
       - name: Configure zcf
         shell: bash
         run: |
@@ -186,13 +207,16 @@ jobs:
 
   publish:
     name: Publish to PyPI
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: >
+      startsWith(github.ref, 'refs/tags/v') ||
+      (github.event_name == 'workflow_dispatch' && inputs.publish && github.ref == 'refs/heads/main')
     needs:
       - native-wheel
       - manylinux-wheel
     runs-on: ubuntu-24.04
     environment: pypi
     permissions:
+      contents: write
       id-token: write
 
     steps:
@@ -202,14 +226,18 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Verify release tag
+      - name: Resolve release version
+        id: release
         env:
-          RELEASE_TAG: ${{ github.ref_name }}
-        run: >
-          python -c "import os,pathlib,tomllib;
-          version=tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'];
-          assert os.environ['RELEASE_TAG']==f'v{version}',
-          f\"tag {os.environ['RELEASE_TAG']} does not match v{version}\""
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
+        run: |
+          version=$(python scripts/release_version.py --version "$RELEASE_VERSION" --tag "$RELEASE_TAG")
+          if [ -z "$RELEASE_TAG" ] && git ls-remote --exit-code --tags origin "refs/tags/v$version" >/dev/null; then
+            echo "::error::tag v$version already exists; choose a new version"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - uses: actions/download-artifact@v5
         with:
@@ -217,4 +245,28 @@ jobs:
           path: dist
           merge-multiple: true
 
+      - name: Verify wheel versions
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          ls dist
+          test "$(ls dist/*.whl | wc -l)" -eq 6
+          for wheel in dist/*.whl; do
+            case "$(basename "$wheel")" in
+              "zcf-$VERSION-"*) ;;
+              *) echo "::error::$wheel is not version $VERSION"; exit 1 ;;
+            esac
+          done
+
       - uses: pypa/gh-action-pypi-publish@release/v1
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: >
+          gh release create "v$VERSION" dist/*.whl
+          --repo "$GITHUB_REPOSITORY"
+          --target "$GITHUB_SHA"
+          --title "zcf $VERSION"
+          --generate-notes

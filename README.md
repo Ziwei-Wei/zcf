@@ -78,9 +78,20 @@ The wheel workflow covers:
 - macOS Intel and ARM64; and
 - manylinux 2.28 x64 and ARM64.
 
-Tags matching `v<project-version>` publish all validated wheels through PyPI
-trusted publishing. The repository's `pypi` GitHub environment must be
-registered as a trusted publisher before the first release.
+To publish a release, run **Actions > Cross-platform wheels > Run workflow** on
+`main` with **Publish** checked. **Version** (for example `0.1.1`) sets the
+package version for that build; leave it empty to use `pyproject.toml`. After
+all six wheels pass, the workflow uploads them to PyPI through trusted
+publishing and creates GitHub release `v<version>` with the wheels attached.
+The same can be started from the command line:
+
+```text
+gh workflow run wheels.yml --ref main -f version=0.1.1 -f publish=true
+```
+
+Pushing a tag `v<project-version>` also publishes; the tag must match the
+version in `pyproject.toml`. PyPI must list the repository's `wheels.yml`
+workflow and `pypi` environment as a trusted publisher for `zcf`.
 
 ## Use zcf
 
