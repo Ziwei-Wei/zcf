@@ -79,7 +79,8 @@ void compactCallIfItFits(const AnnotatedLine &Line, FormatToken &LeftParen,
                          const FormatStyle &FormatStyle) {
   if (FormatStyle.ColumnLimit == 0 || !LeftParen.MatchingParen ||
       !LeftParen.Next || LeftParen.Next == LeftParen.MatchingParen ||
-      hasRequiredStringLiteralBreak(LeftParen, FormatStyle))
+      hasRequiredStringLiteralBreak(LeftParen, FormatStyle) ||
+      hasFinalizedBreak(*LeftParen.Next, *LeftParen.MatchingParen))
     return;
 
   bool HasNewline = false;

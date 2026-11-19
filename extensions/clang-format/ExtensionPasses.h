@@ -33,6 +33,10 @@ bool hasRequiredStringLiteralBreak(const FormatToken &LeftParen,
                                    const FormatStyle &Style);
 
 void forceBreakBefore(FormatToken &Token);
+// True when a token in [Begin, End] must start a new line because a
+// preprocessor directive precedes it inside the line. Removing that break
+// would join code onto the directive line.
+bool hasFinalizedBreak(const FormatToken &Begin, const FormatToken &End);
 // Places each top-level list element and the closing parenthesis on its own
 // line.
 void forceMultilineList(FormatToken &LeftParen);

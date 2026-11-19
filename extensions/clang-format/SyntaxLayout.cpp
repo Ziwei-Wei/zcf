@@ -56,6 +56,16 @@ void forceBreakBefore(FormatToken &Token) {
   Token.NewlinesBefore = std::max(Token.NewlinesBefore, 1u);
 }
 
+bool hasFinalizedBreak(const FormatToken &Begin, const FormatToken &End) {
+  for (const auto *Token = &Begin; Token; Token = Token->Next) {
+    if (Token->MustBreakBeforeFinalized)
+      return true;
+    if (Token == &End)
+      break;
+  }
+  return false;
+}
+
 void forceMultilineList(FormatToken &LeftParen) {
   auto *RightParen = LeftParen.MatchingParen;
   if (!RightParen || !LeftParen.Next || LeftParen.Next == RightParen)
@@ -237,7 +247,8 @@ void expandNestedAggregate(AnnotatedLine &Line,
         }
       }
     } else if (Token->is(tok::comma) && Token->Next &&
-               Token->NestingLevel > MaximumBraceLevel) {
+               Token->NestingLevel > MaximumBraceLevel &&
+               !Token->Next->MustBreakBeforeFinalized) {
       Token->Next->MustBreakBefore = false;
       Token->Next->NewlinesBefore = 0;
     }
@@ -372,7 +383,8 @@ bool rangeContainsArithmetic(const FormatToken &Begin, const FormatToken &End) {
 
 void forceLeadingOperatorBreak(FormatToken &Operator) {
   forceBreakBefore(Operator);
-  if (Operator.Next && Operator.Next->isNot(tok::comment)) {
+  if (Operator.Next && Operator.Next->isNot(tok::comment) &&
+      !Operator.Next->MustBreakBeforeFinalized) {
     Operator.Next->MustBreakBefore = false;
     Operator.Next->CanBreakBefore = false;
     Operator.Next->NewlinesBefore = 0;
@@ -868,8 +880,10 @@ void compactTwoOperandExpressions(AnnotatedLine &Line,
       continue;
     }
     const auto Width = getFlatWidth(*Begin, *End);
-    if (!Width || *Width > FormatStyle.ColumnLimit)
+    if (!Width || *Width > FormatStyle.ColumnLimit || !Begin->Next ||
+        hasFinalizedBreak(*Begin->Next, *End)) {
       continue;
+    }
 
     for (auto *Token = Begin->Next; Token; Token = Token->Next) {
       Token->MustBreakBefore = false;

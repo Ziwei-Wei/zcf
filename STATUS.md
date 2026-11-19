@@ -270,6 +270,14 @@ differences, each fixed with a regression check:
   expanded, and when LibFormat breaks after one, zcf repeats formatting so the
   declaration that follows is expanded in the same run.
 
+Formatting rdcore-workshop found that compaction ignored preprocessor
+directives inside a statement. `ProgressiveCallExpansion` and
+`ProgressiveArithmeticExpansion` cleared the break LibFormat requires after a
+directive such as `#endif` inside a call's arguments or an expression, which
+joined the next token onto the directive line and changed the code. Ranges
+that contain such a break are no longer compacted, and no extension removes
+that break. Regression contract `call-arguments-across-directives`.
+
 ### Upstream backports
 
 `integration/backports/` holds verbatim upstream LLVM fixes for the pinned
