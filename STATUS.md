@@ -253,8 +253,9 @@ regression contract:
 - Blank lines inserted after LibFormat aligned trailing comments left them
   aligned across the blank line; zcf now repeats formatting once in that case.
 
-Repeating the corpus inputs with eleven base styles, CRLF line endings, and
-`-lines` ranges found further differences, each fixed with a regression check:
+Formatting the contract inputs with eleven style variations, CRLF line endings,
+and `-lines` ranges (`tests/validate_format_variations.py`) found further
+differences, each fixed with a regression check:
 
 - Blank-line rules edited lines outside a `-lines` range. As with upstream
   `SeparateDefinitionBlocks`, a blank line is now inserted only before a line
