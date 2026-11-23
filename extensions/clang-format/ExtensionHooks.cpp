@@ -73,6 +73,53 @@ bool isNamedParen(const FormatToken &LeftParen) {
                                TT_TemplateCloser);
 }
 
+// LibFormat cannot tell `virtual T f(U) = 0;` from a variable initialized with
+// an argument when every parameter is an unnamed user type, so it leaves the
+// declaration unrecognized. Only member functions can be virtual. The return
+// type break is decided before this hook runs, so it is applied here.
+void markVirtualFunctionDeclaration(AnnotatedLine &Line,
+                                    const FormatStyle &FormatStyle) {
+  auto *First = Line.First;
+  while (First && First->is(tok::comment))
+    First = First->Next;
+  if (!First || First->isNot(tok::kw_virtual) || !Line.MightBeFunctionDecl)
+    return;
+
+  FormatToken *LeftParen = nullptr;
+  for (auto *Token = First->Next; Token; Token = Token->Next) {
+    if (Token->is(TT_FunctionDeclarationName) ||
+        Token->is(TT_CtorDtorDeclName) || Token->is(tok::kw_operator))
+      return;
+    if (Token->isOneOf(tok::semi, tok::equal, tok::l_brace, tok::arrow))
+      break;
+    if (Token->is(TT_TemplateOpener) && Token->MatchingParen) {
+      Token = Token->MatchingParen;
+    } else if (Token->is(tok::l_paren) && Token->MatchingParen) {
+      const auto *Name = Token->getPreviousNonComment();
+      if (Name && Name->is(tok::identifier))
+        LeftParen = Token;
+      Token = Token->MatchingParen;
+    }
+  }
+  if (!LeftParen)
+    return;
+
+  auto *Name = LeftParen->getPreviousNonComment();
+  if (const auto *Before = Name->getPreviousNonComment();
+      Before && Before->isOneOf(tok::hashhash, tok::tilde)) {
+    return;
+  }
+  Name->setFinalizedType(TT_FunctionDeclarationName);
+  if (LeftParen->is(TT_Unknown))
+    LeftParen->setType(TT_FunctionDeclarationLParen);
+  if (FormatStyle.BreakAfterReturnType == FormatStyle::RTBS_All ||
+      (FormatStyle.BreakAfterReturnType == FormatStyle::RTBS_TopLevel &&
+       Line.Level == 0)) {
+    forceBreakBefore(*Name);
+    addForcedBreakLength(*Name, FormatStyle);
+  }
+}
+
 // Widths are measured from the formatted line start, not from input columns,
 // so the decision does not change when a later run re-indents the line.
 void compactCallIfItFits(const AnnotatedLine &Line, FormatToken &LeftParen,
@@ -123,6 +170,9 @@ void customizeAnnotatedLine(AnnotatedLine &Line,
   const auto *Style = getActiveExtensionStyleConst();
   if (!Style)
     return;
+
+  if (Style->ForceMultilineFunctionSignatures)
+    markVirtualFunctionDeclaration(Line, FormatStyle);
 
   for (auto *Token = Line.First; Token; Token = Token->Next) {
     // A declaration-like line can still contain a call, but its own parameter
