@@ -278,6 +278,15 @@ joined the next token onto the directive line and changed the code. Ranges
 that contain such a break are no longer compacted, and no extension removes
 that break. Regression contract `call-arguments-across-directives`.
 
+LibFormat does not recognize a declaration such as
+`virtual void SetAudioFormat(AudioFormat) = 0;` whose parameters are all
+unnamed user types, because it could also be a variable initialized with an
+argument. Variables cannot be `virtual`, so with
+`ForceMultilineFunctionSignatures` zcf treats a line that starts with `virtual`
+as a function declaration: the return type break and the one-parameter-per-line
+layout apply as they do to recognized declarations. Regression contract
+`virtual-unnamed-parameters`.
+
 ### Upstream backports
 
 `integration/backports/` holds verbatim upstream LLVM fixes for the pinned

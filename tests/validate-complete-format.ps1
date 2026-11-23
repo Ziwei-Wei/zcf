@@ -245,6 +245,8 @@ $regressionContracts = [ordered]@{
         '{BasedOnStyle: ZCF, BreakAfterReturnType: AllDefinitions}'
     # Reduced from rdcore-workshop: compaction joined code onto #if/#else/#endif lines.
     'call-arguments-across-directives' = '{BasedOnStyle: ZCF}'
+    # Reduced from rdcore-workshop: virtual declarations with only unnamed parameters.
+    'virtual-unnamed-parameters' = '{BasedOnStyle: ZCF}'
 }
 foreach ($contract in $regressionContracts.GetEnumerator()) {
     $caseId = [string]$contract.Key
