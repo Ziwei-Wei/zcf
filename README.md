@@ -126,6 +126,13 @@ with their opening brace on its own line, progressive call and arithmetic
 expansion, and 22 independently configurable extensions. `BasedOnStyle: ZCF`
 enables every extension.
 
+## Report problems
+
+Report bugs, and formatting you would like changed, at
+https://github.com/Ziwei-Wei/zcf/issues. Include `zcf --version`, the relevant
+`.clang-format` options, and a small input with the current and expected output.
+The repository is public, so use a made-up example rather than private code.
+
 ## Build from source
 
 Initialize the pinned LLVM submodule:

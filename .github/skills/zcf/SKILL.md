@@ -63,3 +63,24 @@ Use `zcf` as the repository's clang-format-compatible formatter.
 - Do not overwrite repository configuration.
 - Do not discard pre-existing changes.
 - Surface formatter errors instead of treating partial output as success.
+
+## Report zcf problems
+
+zcf is open source at https://github.com/Ziwei-Wei/zcf. When zcf crashes,
+changes code rather than only whitespace and line breaks, gives different
+output on a second run, or ignores a `.clang-format` option, open an issue at
+https://github.com/Ziwei-Wei/zcf/issues, for example with
+`gh issue create -R Ziwei-Wei/zcf`. Search the existing issues first.
+
+Include the `zcf --version` output, the operating system, the relevant
+`.clang-format` options, the command, and a small input with the actual and
+expected output. The repository is public: never paste private or proprietary
+code. Reduce the problem to a small made-up example first. If you cannot post
+the issue, give the user its text instead.
+
+The same applies when the user is not satisfied with how zcf formats some code.
+First check whether an existing option in the repository's `.clang-format`
+covers it, and if so suggest that change to the user instead of editing the
+configuration yourself. Otherwise, with the user's agreement, open an issue that
+shows a small made-up input, zcf's current output, and the output the user
+wants.
