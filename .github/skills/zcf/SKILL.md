@@ -10,23 +10,17 @@ Use `zcf` as the repository's clang-format-compatible formatter.
 
 ## Workflow
 
-1. Make sure the latest `zcf` is installed:
-
-   ```text
-   zcf check-update
-   ```
-
-   Exit code 0 means it is current. Exit code 1 means a newer version is
-   available: run `pipx upgrade zcf`, then continue. Exit code 2 means PyPI
-   could not be reached; continue with the installed version and say so in
-   the report. If `zcf` is missing, ask before installing it:
+1. Run `zcf` directly; don't upgrade or check for updates first. If it is
+   missing, ask before installing it:
 
    ```text
    pipx install zcf
    ```
 
-   If a later `zcf` run prints `zcf X is available`, run `pipx upgrade zcf`
-   and run the same command again.
+   When a newer version exists, a run prints
+   `zcf: zcf X is available; this is zcf Y` on stderr. Then run
+   `pipx upgrade zcf` and run the same command again. If the upgrade fails,
+   continue with the installed version and say so in the report.
 
 2. Locate the nearest `.clang-format` or `_clang-format` file. Reuse it with
    `-style=file`; do not invent or replace repository formatting policy.
