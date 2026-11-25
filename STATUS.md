@@ -14,6 +14,8 @@ Last updated: 2026-10-08
   precedence without deleting another formatter.
 - `zcf install-skill` installs the packaged project skill under
   `.github/skills/zcf/SKILL.md` with idempotent and conflict-safe behavior.
+- `zcf check-update` reports whether a newer release is on PyPI, and formatting
+  with `zcf` prints a notice on stderr when one is (checked at most daily).
 - Windows x64 and ARM64 wheel jobs pass end to end.
 - Local Windows validation passes:
   - signature, structure, and complete-policy suites;
@@ -312,16 +314,8 @@ Known upstream LLVM 20 behavior that zcf does not change:
 
 All code-review follow-ups are complete.
 
-## Remaining release work
+## Releases
 
-1. Register the repository's `wheels.yml` workflow and `pypi` environment as a
-   PyPI trusted publisher.
-2. Run the `Cross-platform wheels` workflow on `main` with **Publish** checked
-   (or push tag `v0.1.0`).
-3. Confirm public installation:
-
-   ```text
-   pipx install zcf
-   zcf activate
-   zcf status
-   ```
+zcf is published to PyPI through trusted publishing by running the
+`Cross-platform wheels` workflow on `main` with **Publish** checked (see
+README.md).

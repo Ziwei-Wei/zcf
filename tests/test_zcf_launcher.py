@@ -258,6 +258,88 @@ class LauncherTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "Usage"):
             launcher._parse_install_skill_arguments(["one", "two"])
 
+    def test_version_comparison_orders_pre_releases_first(self):
+        self.assertTrue(launcher._is_newer("0.1.3", "0.1.2"))
+        self.assertTrue(launcher._is_newer("0.2.0", "0.1.10"))
+        self.assertTrue(launcher._is_newer("0.1.2", "0.1.2rc1"))
+        self.assertFalse(launcher._is_newer("0.1.2rc1", "0.1.2"))
+        self.assertFalse(launcher._is_newer("0.1.2", "0.1.2"))
+        self.assertFalse(launcher._is_newer("not-a-version", "0.1.2"))
+
+    def _notify(self, cache: Path, *, latest=None, error=None, environ=None):
+        lookup = mock.Mock(return_value=latest, side_effect=error)
+        stderr = StringIO()
+        with (
+            mock.patch.object(launcher, "_installed_version", return_value="0.1.2"),
+            mock.patch.object(launcher, "_update_cache_file", return_value=cache),
+            mock.patch.object(launcher, "_latest_version", lookup),
+            mock.patch.dict(os.environ),
+            mock.patch.object(sys, "stderr", stderr),
+        ):
+            os.environ.pop("CI", None)
+            os.environ.pop("ZCF_NO_UPDATE_CHECK", None)
+            os.environ.update(environ or {})
+            launcher._notify_if_outdated()
+        return lookup, stderr.getvalue()
+
+    def test_update_notice_asks_pypi_at_most_once_per_interval(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cache = Path(directory) / "zcf" / "update-check.json"
+
+            lookup, notice = self._notify(cache, latest="0.1.3")
+            self.assertEqual(lookup.call_count, 1)
+            self.assertIn("zcf 0.1.3 is available; this is zcf 0.1.2", notice)
+            self.assertIn("pipx upgrade zcf", notice)
+
+            lookup, notice = self._notify(cache, latest="9.9.9")
+            lookup.assert_not_called()
+            self.assertIn("zcf 0.1.3 is available", notice)
+
+    def test_update_notice_is_silent_when_current_offline_or_disabled(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cache = Path(directory) / "update-check.json"
+
+            _, notice = self._notify(cache, latest="0.1.2")
+            self.assertEqual(notice, "")
+
+            cache.unlink()
+            lookup, notice = self._notify(cache, error=OSError("offline"))
+            self.assertEqual(notice, "")
+            lookup, _ = self._notify(cache, error=OSError("offline"))
+            lookup.assert_not_called()
+
+            cache.unlink()
+            lookup, notice = self._notify(
+                cache, latest="0.1.3", environ={"ZCF_NO_UPDATE_CHECK": "1"}
+            )
+            lookup.assert_not_called()
+            self.assertEqual(notice, "")
+
+    def test_check_update_exit_codes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cache = Path(directory) / "update-check.json"
+            for latest, error, expected in (
+                ("0.1.2", None, 0),
+                ("0.1.3", None, 1),
+                (None, OSError("offline"), 2),
+            ):
+                with (
+                    mock.patch.object(
+                        launcher, "_installed_version", return_value="0.1.2"
+                    ),
+                    mock.patch.object(
+                        launcher, "_update_cache_file", return_value=cache
+                    ),
+                    mock.patch.object(
+                        launcher,
+                        "_latest_version",
+                        mock.Mock(return_value=latest, side_effect=error),
+                    ),
+                    redirect_stdout(StringIO()),
+                    mock.patch.object(sys, "stderr", StringIO()),
+                ):
+                    self.assertEqual(launcher._check_update(), expected)
+
 
 if __name__ == "__main__":
     unittest.main()
