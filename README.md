@@ -23,7 +23,7 @@ an extension.
 
 ## Install with pipx
 
-Once zcf is published to PyPI:
+Install with pipx:
 
 ```text
 pipx install zcf
@@ -51,6 +51,23 @@ zcf status
 ```
 
 Restart running terminals and IDEs after activation.
+
+### Stay up to date
+
+```text
+zcf check-update
+pipx upgrade zcf
+```
+
+`zcf check-update` compares the installed version with the latest on PyPI. It
+exits with 0 when zcf is current, 1 when a newer version is available, and 2
+when PyPI cannot be reached.
+
+When a newer version exists, formatting with `zcf` also prints a one-line
+notice on stderr; formatting, output, and exit codes are unchanged. PyPI is
+asked at most once a day, and the answer is cached in the user cache directory.
+The notice is not shown for the `clang-format` alias, in CI (`CI` set), or when
+`ZCF_NO_UPDATE_CHECK` is set.
 
 Install the zcf agent skill into a repository so compatible coding agents can
 discover and use the formatter automatically:

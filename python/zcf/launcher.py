@@ -1,13 +1,24 @@
 from __future__ import annotations
 
+import json
 import os
+import re
 import shlex
 import shutil
 import subprocess
 import sys
 import tempfile
+import time
+import urllib.request
+from importlib import metadata
 from importlib.resources import files
 from pathlib import Path
+
+_PYPI_URL = "https://pypi.org/pypi/zcf/json"
+_UPDATE_CHECK_INTERVAL_SECONDS = 24 * 60 * 60
+_UPGRADE_COMMAND = "pipx upgrade zcf"
+_VERSION = re.compile(r"(\d+)\.(\d+)\.(\d+)(?:(a|b|rc)(\d+))?")
+_PRE_RELEASE_RANK = {"a": 0, "b": 1, "rc": 2}
 
 
 def _is_windows() -> bool:
@@ -92,6 +103,143 @@ def _parse_install_skill_arguments(arguments: list[str]) -> tuple[Path, bool]:
                 "Usage: zcf install-skill [--force] [repository]"
             )
     return repository or Path.cwd(), force
+
+
+def _installed_version() -> str | None:
+    try:
+        return metadata.version("zcf")
+    except metadata.PackageNotFoundError:
+        return None
+
+
+def _version_key(version: str) -> tuple[int, ...] | None:
+    match = _VERSION.fullmatch(version.strip())
+    if not match:
+        return None
+    major, minor, patch, pre_kind, pre_number = match.groups()
+    if pre_kind is None:
+        return (int(major), int(minor), int(patch), 1, 0, 0)
+    return (
+        int(major),
+        int(minor),
+        int(patch),
+        0,
+        _PRE_RELEASE_RANK[pre_kind],
+        int(pre_number),
+    )
+
+
+def _is_newer(candidate: str, installed: str) -> bool:
+    candidate_key = _version_key(candidate)
+    installed_key = _version_key(installed)
+    return (
+        candidate_key is not None
+        and installed_key is not None
+        and candidate_key > installed_key
+    )
+
+
+def _latest_version(*, timeout: float) -> str:
+    with urllib.request.urlopen(_PYPI_URL, timeout=timeout) as response:
+        version = json.load(response)["info"]["version"]
+    if not isinstance(version, str):
+        raise ValueError("PyPI returned no version for zcf")
+    return version
+
+
+def _update_cache_file() -> Path:
+    if _is_windows():
+        base = os.environ.get("LOCALAPPDATA") or str(
+            Path.home() / "AppData" / "Local"
+        )
+    elif sys.platform == "darwin":
+        base = str(Path.home() / "Library" / "Caches")
+    else:
+        base = os.environ.get("XDG_CACHE_HOME") or str(Path.home() / ".cache")
+    return Path(base) / "zcf" / "update-check.json"
+
+
+def _write_update_cache(latest: str | None) -> None:
+    cache = _update_cache_file()
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        mode="w",
+        encoding="utf-8",
+        dir=cache.parent,
+        prefix=".update-check.",
+        suffix=".tmp",
+        delete=False,
+    ) as stream:
+        json.dump({"checked": time.time(), "latest": latest}, stream)
+        temporary = Path(stream.name)
+    try:
+        os.replace(temporary, cache)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def _upgrade_message(installed: str, latest: str) -> str:
+    return (
+        f"zcf {latest} is available; this is zcf {installed}. "
+        f"Update with '{_UPGRADE_COMMAND}', then run the command again."
+    )
+
+
+# Runs before formatting. It must never fail or slow down a run: PyPI is
+# asked at most once per interval, failures are cached too, and the notice
+# goes to stderr so formatted output on stdout is unchanged.
+def _notify_if_outdated() -> None:
+    if os.environ.get("ZCF_NO_UPDATE_CHECK") or os.environ.get("CI"):
+        return
+    installed = _installed_version()
+    if installed is None:
+        return
+
+    latest = None
+    checked = 0.0
+    try:
+        state = json.loads(_update_cache_file().read_text(encoding="utf-8"))
+        latest = state.get("latest")
+        checked = float(state.get("checked", 0))
+    except (OSError, ValueError, TypeError, AttributeError):
+        pass
+
+    if time.time() - checked >= _UPDATE_CHECK_INTERVAL_SECONDS:
+        try:
+            latest = _latest_version(timeout=2)
+        except (OSError, ValueError, KeyError, TypeError):
+            pass
+        try:
+            _write_update_cache(latest)
+        except OSError:
+            pass
+
+    if isinstance(latest, str) and _is_newer(latest, installed):
+        print(f"zcf: {_upgrade_message(installed, latest)}", file=sys.stderr)
+
+
+def _check_update() -> int:
+    installed = _installed_version()
+    if installed is None:
+        raise RuntimeError("zcf is not installed as a package.")
+    try:
+        latest = _latest_version(timeout=10)
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        print(
+            f"zcf: could not get the latest version from PyPI: {error}",
+            file=sys.stderr,
+        )
+        return 2
+    try:
+        _write_update_cache(latest)
+    except OSError:
+        pass
+
+    if _is_newer(latest, installed):
+        print(_upgrade_message(installed, latest))
+        return 1
+    print(f"zcf {installed} is the latest version.")
+    return 0
 
 
 def _run_native(*, clang_format_alias: bool) -> int:
@@ -279,6 +427,9 @@ def zcf_main() -> int:
         if len(sys.argv) >= 2 and sys.argv[1] == "install-skill":
             repository, force = _parse_install_skill_arguments(sys.argv[2:])
             return _install_skill(repository, force=force)
+        if len(sys.argv) == 2 and sys.argv[1] == "check-update":
+            return _check_update()
+        _notify_if_outdated()
         return _run_native(clang_format_alias=False)
     except RuntimeError as error:
         print(f"zcf: error: {error}", file=sys.stderr)

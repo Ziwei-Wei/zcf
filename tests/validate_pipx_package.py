@@ -78,6 +78,9 @@ def main() -> int:
     environment["PIPX_HOME"] = str(pipx_home)
     environment["PIPX_BIN_DIR"] = str(pipx_bin)
     environment["HOME"] = str(work_dir / "profile")
+    # Locally built wheels are older than PyPI; keep the update notice out of
+    # the merged output that the checks below parse.
+    environment["ZCF_NO_UPDATE_CHECK"] = "1"
     environment["PATH"] = os.pathsep.join(
         [
             str(pipx_bin),
